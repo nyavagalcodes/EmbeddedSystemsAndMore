@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HB5 · Peripheral Drivers & HAL Engineering — Embedded Systems Mastery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,200;0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,200;1,9..144,300;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #14110d;
+  --bg-2: #1a1612;
+  --bg-3: #221d17;
+  --bg-card: #18140f;
+  --fg: #e8dfc9;
+  --fg-2: #b8ad94;
+  --fg-3: #7d735f;
+  --fg-4: #4e4737;
+  --gold: #c9a961;
+  --gold-bright: #d9bb74;
+  --gold-deep: #9e8649;
+  --gold-soft: rgba(201, 169, 97, 0.12);
+  --line: rgba(232, 223, 201, 0.07);
+  --line-strong: rgba(232, 223, 201, 0.14);
+  --serif: "Fraunces", "Cormorant Garamond", Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "kern", "liga", "onum";
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Subtle paper-grain texture overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.45 0 0 0 0 0.35 0 0 0 0.06 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  opacity: 0.6;
+  z-index: 0;
+  mix-blend-mode: overlay;
+}
+
+/* Soft vignette */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(201, 169, 97, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 40% at 50% 100%, rgba(20, 17, 13, 0.5) 0%, transparent 50%);
+  z-index: 0;
+}
+
+.page { position: relative; z-index: 1; }
+
+::selection { background: var(--gold); color: var(--bg); }
+
+/* ============================================================
+   TOP BAR
+   ============================================================ */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 20px 32px;
+  background: rgba(20, 17, 13, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+.topbar .brand {
+  color: var(--gold);
+  font-weight: 500;
+  text-decoration: none;
+  letter-spacing: 0.24em;
+}
+.topbar .nav-right {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  color: var(--fg-3);
+}
+.topbar .nav-right a {
+  color: var(--fg-3);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.topbar .nav-right a:hover { color: var(--gold); }
+.topbar .sep { color: var(--fg-4); }
+
+/* ============================================================
+   HERO — main index
+   ============================================================ */
+.hero {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 120px 40px 80px;
+  position: relative;
+}
+
+/* The eyebrow with a thin gold rule */
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 56px;
+}
+.hero-eyebrow::before {
+  content: "";
+  width: 40px;
+  height: 1px;
+  background: var(--gold);
+}
+
+/* Refined hero title — single line treatment, italic emphasis inline */
+.hero h1 {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(48px, 8vw, 108px);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  margin: 0 0 32px;
+  color: var(--fg);
+  max-width: 14ch;
+}
+.hero h1 .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+
+.hero-sub {
+  font-family: var(--serif);
+  font-size: clamp(18px, 2vw, 22px);
+  line-height: 1.55;
+  color: var(--fg-2);
+  max-width: 580px;
+  margin: 0 0 64px;
+  font-weight: 400;
+}
+
+/* Stats — refined, single row, hairline rules */
+.hero-stats {
+  display: flex;
+  gap: 64px;
+  padding: 28px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  max-width: 600px;
+  flex-wrap: wrap;
+}
+.hero-stat-num {
+  font-family: var(--serif);
+  font-size: 42px;
+  font-weight: 300;
+  color: var(--gold);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-feature-settings: "lnum", "tnum";
+}
+.hero-stat-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg-3);
+  margin-top: 10px;
+}
+
+/* ============================================================
+   SECTION DIVIDER — thin refined rule with label
+   ============================================================ */
+.divider {
+  max-width: 1180px;
+  margin: 80px auto 0;
+  padding: 0 40px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 32px;
+  align-items: center;
+}
+.divider .label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.32em;
+  color: var(--gold);
+}
+.divider .label::before {
+  content: "§";
+  margin-right: 10px;
+  color: var(--fg-3);
+}
+.divider .line {
+  height: 1px;
+  background: linear-gradient(to right, var(--gold-deep) 0%, var(--line) 60%);
+}
+.divider .count {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-3);
+  letter-spacing: 0.18em;
+}
+
+/* ============================================================
+   TIER OVERVIEW — refined, all same gold, distinguished by typography
+   ============================================================ */
+.tiers {
+  max-width: 1180px;
+  margin: 32px auto 0;
+  padding: 0 40px;
+}
+.tiers-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.tier-block {
+  padding: 36px 28px;
+  border-right: 1px solid var(--line);
+  position: relative;
+}
+.tier-block:last-child { border-right: none; }
+
+.tier-roman {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 38px;
+  font-weight: 300;
+  color: var(--gold);
+  opacity: 0.7;
+  line-height: 1;
+  margin-bottom: 18px;
+  font-feature-settings: "lnum";
+}
+.tier-name {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.tier-vols {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--fg-3);
+  letter-spacing: 0.16em;
+  margin-bottom: 18px;
+}
+.tier-desc {
+  font-family: var(--serif);
+  font-size: 14px;
+  color: var(--fg-2);
+  line-height: 1.55;
+  font-style: italic;
+}
+
+/* ============================================================
+   BOOK LIST — refined, restrained, premium
+   ============================================================ */
+.books-section {
+  max-width: 1180px;
+  margin: 32px auto 0;
+  padding: 0 40px 100px;
+}
+
+.books-grid {
+  border-top: 1px solid var(--line);
+}
+
+.book {
+  display: grid;
+  grid-template-columns: 90px 1fr 160px;
+  gap: 40px;
+  align-items: center;
+  padding: 40px 12px;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+  transition: background 0.25s ease;
+}
+
+.book:hover {
+  background: linear-gradient(to right, var(--gold-soft), transparent 60%);
+}
+.book:hover .book-num { color: var(--gold); }
+.book:hover .book-arrow { color: var(--gold); gap: 14px; }
+
+.book-num {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 56px;
+  line-height: 1;
+  color: var(--fg-4);
+  letter-spacing: -0.02em;
+  font-feature-settings: "lnum", "tnum";
+  transition: color 0.25s ease;
+}
+
+.book-main { min-width: 0; }
+
+.book-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--fg-3);
+  flex-wrap: wrap;
+}
+.book-meta .tier-tag {
+  color: var(--gold);
+  font-weight: 600;
+}
+.book-meta .dot {
+  color: var(--fg-4);
+}
+
+.book-title {
+  font-family: var(--serif);
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  margin: 0 0 12px;
+  color: var(--fg);
+}
+.book-title .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+
+.book-tagline {
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--fg-2);
+  margin: 0;
+  max-width: 580px;
+  font-style: italic;
+}
+
+.book-side {
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--fg-3);
+}
+.book-side .topics-count {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 32px;
+  font-weight: 300;
+  color: var(--fg-2);
+  display: block;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.book-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  color: var(--fg-3);
+  transition: all 0.25s ease;
+}
+.book-arrow::after { content: "→"; }
+
+/* ============================================================
+   BOOK PAGE — individual handbook
+   ============================================================ */
+.book-hero {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 80px 40px 60px;
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+
+.back-link {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--fg-3);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 56px;
+  transition: all 0.2s ease;
+}
+.back-link::before { content: "←"; font-size: 13px; }
+.back-link:hover { color: var(--gold); gap: 16px; }
+
+.book-hero-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 60px;
+  align-items: flex-end;
+}
+
+.book-hero-meta {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 24px;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg-3);
+  flex-wrap: wrap;
+}
+.book-hero-meta .vol {
+  color: var(--gold);
+  font-weight: 600;
+}
+.book-hero-meta .dot { color: var(--fg-4); }
+
+.book-hero h1 {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(40px, 6vw, 76px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  margin: 0 0 24px;
+  color: var(--fg);
+}
+.book-hero h1 .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+
+.book-hero .tagline {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(17px, 1.8vw, 20px);
+  line-height: 1.55;
+  color: var(--fg-2);
+  max-width: 660px;
+  margin: 0;
+}
+
+/* Discreet large numeral on the side */
+.book-hero-num {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 200;
+  font-size: clamp(120px, 14vw, 180px);
+  line-height: 0.85;
+  color: var(--gold);
+  opacity: 0.12;
+  letter-spacing: -0.04em;
+  margin: 0;
+  user-select: none;
+  font-feature-settings: "lnum", "tnum";
+}
+
+/* ============================================================
+   TOPICS LIST
+   ============================================================ */
+.topics-section {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 60px 40px 40px;
+}
+
+.topics-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 32px;
+  align-items: center;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.topics-header .label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.32em;
+  color: var(--gold);
+}
+.topics-header .label::before {
+  content: "§";
+  margin-right: 10px;
+  color: var(--fg-3);
+}
+.topics-header .line {
+  height: 1px;
+  background: var(--line);
+}
+.topics-header .count {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-3);
+  letter-spacing: 0.18em;
+}
+
+.topic {
+  display: grid;
+  grid-template-columns: 80px 1fr 120px;
+  gap: 32px;
+  padding: 26px 12px;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+  color: inherit;
+  align-items: center;
+  transition: background 0.25s ease;
+}
+.topic:hover {
+  background: linear-gradient(to right, var(--gold-soft), transparent 70%);
+}
+.topic:hover .topic-num { color: var(--gold); }
+.topic:hover .topic-title { color: var(--gold-bright); }
+
+.topic-num {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 38px;
+  line-height: 1;
+  color: var(--fg-4);
+  letter-spacing: -0.02em;
+  font-feature-settings: "lnum", "tnum";
+  transition: color 0.25s ease;
+}
+
+.topic-title {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(18px, 2vw, 22px);
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+  margin: 0 0 6px;
+  color: var(--fg);
+  transition: color 0.25s ease;
+}
+
+.topic-desc {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--fg-2);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.topic-status {
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--fg-4);
+}
+.topic-status::after { content: "  →"; }
+
+/* ============================================================
+   PAGE NAVIGATION
+   ============================================================ */
+.page-nav {
+  max-width: 1180px;
+  margin: 60px auto 0;
+  padding: 32px 40px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.page-nav a, .page-nav .placeholder {
+  text-decoration: none;
+  color: inherit;
+  padding: 32px 28px;
+  border: 1px solid var(--line);
+  display: block;
+  transition: all 0.25s ease;
+}
+.page-nav a:first-child { border-right: none; }
+.page-nav a:hover {
+  background: var(--gold-soft);
+  border-color: var(--gold-deep);
+  position: relative;
+  z-index: 2;
+}
+
+.nav-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--fg-3);
+  margin-bottom: 14px;
+  display: block;
+}
+.nav-prev .nav-label::before { content: "← "; }
+.nav-next { text-align: right; }
+.nav-next .nav-label::after { content: " →"; }
+
+.nav-title {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: var(--fg);
+}
+.page-nav a:hover .nav-title { color: var(--gold); }
+.page-nav a:hover .nav-label { color: var(--gold); }
+
+.placeholder {
+  opacity: 0.3;
+  pointer-events: none;
+}
+.placeholder .nav-title {
+  color: var(--fg-4);
+  font-style: italic;
+  font-weight: 300;
+}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.footer {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 56px 40px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 24px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--fg-3);
+}
+
+.footer-mark {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--gold);
+  text-transform: none;
+  letter-spacing: 0;
+  text-align: center;
+}
+.footer .right { text-align: right; }
+.footer a {
+  color: var(--fg-3);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.footer a:hover { color: var(--gold); }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 1024px) {
+  .tiers-grid { grid-template-columns: repeat(2, 1fr); }
+  .tier-block:nth-child(2) { border-right: none; }
+  .tier-block:nth-child(1), .tier-block:nth-child(2) {
+    border-bottom: 1px solid var(--line);
+  }
+  .book {
+    grid-template-columns: 70px 1fr 120px;
+    gap: 28px;
+    padding: 36px 12px;
+  }
+  .book-num { font-size: 46px; }
+}
+
+@media (max-width: 720px) {
+  .topbar { padding: 16px 20px; font-size: 9px; letter-spacing: 0.18em; }
+  .topbar .nav-right { gap: 14px; }
+  .topbar .sep { display: none; }
+
+  .hero { padding: 64px 20px 56px; }
+  .hero h1 { max-width: none; }
+  .hero-stats { gap: 32px; padding: 24px 0; }
+  .hero-stat-num { font-size: 32px; }
+
+  .divider { padding: 0 20px; gap: 18px; }
+
+  .tiers { padding: 0 20px; }
+  .tiers-grid { grid-template-columns: 1fr; }
+  .tier-block {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    padding: 28px 18px;
+  }
+  .tier-block:last-child { border-bottom: none; }
+
+  .books-section { padding: 0 20px 64px; }
+  .book {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 32px 8px;
+  }
+  .book-num {
+    font-size: 40px;
+    color: var(--gold);
+    opacity: 0.6;
+  }
+  .book-side {
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+  .book-side .topics-count {
+    display: inline;
+    font-size: 22px;
+    margin-bottom: 0;
+    margin-right: 6px;
+  }
+  .book-arrow { margin-top: 0; }
+
+  .book-hero { padding: 48px 20px 40px; }
+  .back-link { margin-bottom: 36px; }
+  .book-hero-grid { grid-template-columns: 1fr; gap: 24px; position: relative; }
+  .book-hero-num {
+    position: absolute;
+    top: -12px;
+    right: 0;
+    font-size: 90px;
+    opacity: 0.08;
+    z-index: 0;
+  }
+  .book-hero-main { position: relative; z-index: 1; }
+
+  .topics-section { padding: 40px 20px 32px; }
+  .topics-header { gap: 14px; margin-bottom: 24px; padding-bottom: 16px; }
+  .topics-header .count { font-size: 9px; }
+  .topic {
+    grid-template-columns: 56px 1fr;
+    gap: 18px;
+    padding: 22px 4px;
+  }
+  .topic-num { font-size: 28px; }
+  .topic-status {
+    grid-column: 2;
+    text-align: left;
+    margin-top: 6px;
+  }
+
+  .page-nav {
+    padding: 28px 20px;
+    grid-template-columns: 1fr;
+  }
+  .page-nav a, .page-nav .placeholder { padding: 22px 20px; }
+  .page-nav a:first-child {
+    border-right: 1px solid var(--line);
+    border-bottom: none;
+  }
+  .nav-next { text-align: left; }
+  .nav-next .nav-label::after { content: " →"; }
+
+  .footer {
+    padding: 36px 20px;
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 14px;
+  }
+  .footer .right { text-align: center; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="topbar">
+  <a href="index.html" class="brand">Embedded Systems Mastery</a>
+  <span class="nav-right">
+    <a href="index.html">All Volumes</a>
+    <span class="sep">·</span>
+    <span>HB5</span>
+  </span>
+</div>
+
+<header class="book-hero">
+  <a href="index.html" class="back-link">Back to all volumes</a>
+  <div class="book-hero-grid">
+    <div class="book-hero-main">
+      <div class="book-hero-meta">
+        <span class="vol">Handbook 05</span>
+        <span class="dot">·</span>
+        <span>Core</span>
+        <span class="dot">·</span>
+        <span>Drivers</span>
+      </div>
+      <h1>Peripheral Drivers <span class="em">& HAL</span> Engineering</h1>
+      <p class="tagline">Writing driver layers that scale across products. GPIO, DMA, timers, ADC, interrupts and the architectural patterns that keep firmware portable.</p>
+    </div>
+    <div class="book-hero-num">05</div>
+  </div>
+</header>
+
+<section class="topics-section">
+  <div class="topics-header">
+    <span class="label">Table of Contents</span>
+    <span class="line"></span>
+    <span class="count">12 Topics</span>
+  </div>
+  <div class="topics">
+    <a href="#topic-01" class="topic">
+      <div class="topic-num">01</div>
+      <div>
+        <div class="topic-title">Driver Architecture — HAL, BSP, Driver Model</div>
+        <div class="topic-desc">Layering, dependency direction, abstraction levels and writing for portability.</div>
+      </div>
+      <div class="topic-status">Pending</div>
+    </a>
+    <a href="#topic-02" class="topic">
+      <div class="topic-num">02</div>
+      <div>
+        <div class="topic-title">GPIO Drivers — Config, IRQ, Debouncing</div>
+        <div class="topic-desc">Pin multiplexing, pull configuration, edge and level interrupts, debounce strategies.</div>
+      </div>
+      <div class="topic-status">Pending</div>
+    </a>
+    <a href="#topic-03" class="topic">
+      <div class="topic-num">03</div>
+      <div>
+        <div class="topic-title">Timers, Counters, PWM & Input Capture</div>
+        <div class="topic-desc">Timer architectures, prescalers, dead-time, encoder mode and capture-compare units.</div>
+      </div>
+      <div class="topic-status">Pending</div>
+    </a>
+    <a href="#topic-04" class="topic">
+      <div class="topic-num">04</div>
+      <div>
+        <div class="topic-title">DMA Controllers & Scatter-Gather</div>
+        <div class="topic-desc">Linked-list transfers, peripheral-to-memory flows, DMA-safe buffers and completion handling.</div>
+      </div>
+      <div class="topic-status">Pending</div>
+    </a>
+    <a href="#topic-05" class="topic">
+      <div class="topic-num">05</div>
+      <div>
+        <div class="topic-title">ADC / DAC Drivers, Sampling & Calibration</div>
+        <div class="topic-desc">Sample-and-hold, oversampling, calibration, reference selection and noise rejection.</div>
+      </div>
+      <div class="topic-status">Pending</div>
+    </a>
+    <a href="#topic-06" class="topic">
+      <div class="topic-num">06</div>
+      <div>
+        <div class="topic-title">RTC, Backup Domains & Time Keeping</div>
+        <div class="topic-desc">Crystal calibration, leap seconds, backup registers and surviving power loss.</div>
+      </div>
+      <div class="topic-status">Pending</div>
+    </a>
+    <a href="#topic-07" class="topic">
+      <div class="topic-num">07</div>
+      <div>
+        <div class="topic-title">Watchdog, Brownout & Reset Tracking</div>
+        <div class="topic-desc">Independent and window watchdogs, brownout thresholds, identifying reset source.</div>
+      </div>
+      <div class="topic-status">Pending</div>
+    </a>
+    <a href="#topic-08" class="topic">
+      <div class="topic-num">08</div>
+      <div>
+        <div class="topic-title">Interrupt Architecture & ISR Patterns</div>
+        <div class="topic-desc">ISR top and bottom half, deferred work, latency budgets, shared data patterns.</div>
+      </div>
+      <div class="topic-status">Pending</div>
+    </a>
+    <a href="#topic-09" class="topic">
+      <div class="topic-num">09</div>
+      <div>
+        <div class="topic-title">State Machine Design</div>
+        <div class="topic-desc">Flat vs hierarchical machines, event-driven design, table-driven implementations.</div>
+      </div>
+      <div class="topic-status">Pending</div>
+    </a>
+    <a href="#topic-10" class="topic">
+      <div class="topic-num">10</div>
+      <div>
+        <div class="topic-title">Driver Abstraction & Cross-MCU Portability</div>
+        <div class="topic-desc">Vendor HAL escape hatches, register abstraction layers, building portable cores.</div>
+      </div>
+      <div class="topic-status">Pending</div>
+    </a>
+    <a href="#topic-11" class="topic">
+      <div class="topic-num">11</div>
+      <div>
+        <div class="topic-title">Configuration — Device Tree, Kconfig, Feature Flags</div>
+        <div class="topic-desc">Build-time vs run-time config, board variants and managing product families.</div>
+      </div>
+      <div class="topic-status">Pending</div>
+    </a>
+    <a href="#topic-12" class="topic">
+      <div class="topic-num">12</div>
+      <div>
+        <div class="topic-title">Driver Testing & Hardware Mocking</div>
+        <div class="topic-desc">Mocking peripherals, on-host driver tests, loopback fixtures and bring-up checklists.</div>
+      </div>
+      <div class="topic-status">Pending</div>
+    </a>
+  </div>
+</section>
+
+<nav class="page-nav">
+  <a href="HB4.html" class="nav-prev">
+    <div class="nav-label">Previous · HB4</div>
+    <div class="nav-title">Toolchain, Build Systems & Embedded C++</div>
+  </a>
+  <a href="HB6.html" class="nav-next">
+    <div class="nav-label">Next · HB6</div>
+    <div class="nav-title">Serial & Field-Bus Communication Protocols</div>
+  </a>
+</nav>
+
+<footer class="footer">
+  <span>Handbook 05 · Core</span>
+  <span class="footer-mark">§</span>
+  <span class="right"><a href="index.html">Series Index</a></span>
+</footer>
+
+</div>
+</body>
+</html>

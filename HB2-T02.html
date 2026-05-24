@@ -1,0 +1,1812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HB2 · Topic 02 · Programmer's Model &amp; <span class='em'>Register File</span> — Embedded Systems Mastery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,200;0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,200;1,9..144,300;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #14110d;
+  --bg-2: #1a1612;
+  --bg-3: #221d17;
+  --bg-card: #18140f;
+  --fg: #e8dfc9;
+  --fg-2: #b8ad94;
+  --fg-3: #7d735f;
+  --fg-4: #4e4737;
+  --gold: #c9a961;
+  --gold-bright: #d9bb74;
+  --gold-deep: #9e8649;
+  --gold-soft: rgba(201, 169, 97, 0.12);
+  --line: rgba(232, 223, 201, 0.07);
+  --line-strong: rgba(232, 223, 201, 0.14);
+  --serif: "Fraunces", "Cormorant Garamond", Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "kern", "liga", "onum";
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Subtle paper-grain texture overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.45 0 0 0 0 0.35 0 0 0 0.06 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  opacity: 0.6;
+  z-index: 0;
+  mix-blend-mode: overlay;
+}
+
+/* Soft vignette */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(201, 169, 97, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 40% at 50% 100%, rgba(20, 17, 13, 0.5) 0%, transparent 50%);
+  z-index: 0;
+}
+
+.page { position: relative; z-index: 1; }
+
+::selection { background: var(--gold); color: var(--bg); }
+
+/* ============================================================
+   TOP BAR
+   ============================================================ */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 20px 32px;
+  background: rgba(20, 17, 13, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+.topbar .brand {
+  color: var(--gold);
+  font-weight: 500;
+  text-decoration: none;
+  letter-spacing: 0.24em;
+}
+.topbar .nav-right {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  color: var(--fg-3);
+}
+.topbar .nav-right a {
+  color: var(--fg-3);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.topbar .nav-right a:hover { color: var(--gold); }
+.topbar .sep { color: var(--fg-4); }
+
+/* ============================================================
+   HERO — main index
+   ============================================================ */
+.hero {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 120px 40px 80px;
+  position: relative;
+}
+
+/* The eyebrow with a thin gold rule */
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 56px;
+}
+.hero-eyebrow::before {
+  content: "";
+  width: 40px;
+  height: 1px;
+  background: var(--gold);
+}
+
+/* Refined hero title — single line treatment, italic emphasis inline */
+.hero h1 {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(48px, 8vw, 108px);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  margin: 0 0 32px;
+  color: var(--fg);
+  max-width: 14ch;
+}
+.hero h1 .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+
+.hero-sub {
+  font-family: var(--serif);
+  font-size: clamp(18px, 2vw, 22px);
+  line-height: 1.55;
+  color: var(--fg-2);
+  max-width: 580px;
+  margin: 0 0 64px;
+  font-weight: 400;
+}
+
+/* Stats — refined, single row, hairline rules */
+.hero-stats {
+  display: flex;
+  gap: 64px;
+  padding: 28px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  max-width: 600px;
+  flex-wrap: wrap;
+}
+.hero-stat-num {
+  font-family: var(--serif);
+  font-size: 42px;
+  font-weight: 300;
+  color: var(--gold);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-feature-settings: "lnum", "tnum";
+}
+.hero-stat-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg-3);
+  margin-top: 10px;
+}
+
+/* ============================================================
+   SECTION DIVIDER — thin refined rule with label
+   ============================================================ */
+.divider {
+  max-width: 1180px;
+  margin: 80px auto 0;
+  padding: 0 40px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 32px;
+  align-items: center;
+}
+.divider .label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.32em;
+  color: var(--gold);
+}
+.divider .label::before {
+  content: "§";
+  margin-right: 10px;
+  color: var(--fg-3);
+}
+.divider .line {
+  height: 1px;
+  background: linear-gradient(to right, var(--gold-deep) 0%, var(--line) 60%);
+}
+.divider .count {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-3);
+  letter-spacing: 0.18em;
+}
+
+/* ============================================================
+   TIER OVERVIEW — refined, all same gold, distinguished by typography
+   ============================================================ */
+.tiers {
+  max-width: 1180px;
+  margin: 32px auto 0;
+  padding: 0 40px;
+}
+.tiers-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.tier-block {
+  padding: 36px 28px;
+  border-right: 1px solid var(--line);
+  position: relative;
+}
+.tier-block:last-child { border-right: none; }
+
+.tier-roman {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 38px;
+  font-weight: 300;
+  color: var(--gold);
+  opacity: 0.7;
+  line-height: 1;
+  margin-bottom: 18px;
+  font-feature-settings: "lnum";
+}
+.tier-name {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.tier-vols {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--fg-3);
+  letter-spacing: 0.16em;
+  margin-bottom: 18px;
+}
+.tier-desc {
+  font-family: var(--serif);
+  font-size: 14px;
+  color: var(--fg-2);
+  line-height: 1.55;
+  font-style: italic;
+}
+
+/* ============================================================
+   BOOK LIST — refined, restrained, premium
+   ============================================================ */
+.books-section {
+  max-width: 1180px;
+  margin: 32px auto 0;
+  padding: 0 40px 100px;
+}
+
+.books-grid {
+  border-top: 1px solid var(--line);
+}
+
+.book {
+  display: grid;
+  grid-template-columns: 90px 1fr 160px;
+  gap: 40px;
+  align-items: center;
+  padding: 40px 12px;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+  transition: background 0.25s ease;
+}
+
+.book:hover {
+  background: linear-gradient(to right, var(--gold-soft), transparent 60%);
+}
+.book:hover .book-num { color: var(--gold); }
+.book:hover .book-arrow { color: var(--gold); gap: 14px; }
+
+.book-num {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 56px;
+  line-height: 1;
+  color: var(--fg-4);
+  letter-spacing: -0.02em;
+  font-feature-settings: "lnum", "tnum";
+  transition: color 0.25s ease;
+}
+
+.book-main { min-width: 0; }
+
+.book-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--fg-3);
+  flex-wrap: wrap;
+}
+.book-meta .tier-tag {
+  color: var(--gold);
+  font-weight: 600;
+}
+.book-meta .dot {
+  color: var(--fg-4);
+}
+
+.book-title {
+  font-family: var(--serif);
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  margin: 0 0 12px;
+  color: var(--fg);
+}
+.book-title .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+
+.book-tagline {
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--fg-2);
+  margin: 0;
+  max-width: 580px;
+  font-style: italic;
+}
+
+.book-side {
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--fg-3);
+}
+.book-side .topics-count {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 32px;
+  font-weight: 300;
+  color: var(--fg-2);
+  display: block;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.book-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  color: var(--fg-3);
+  transition: all 0.25s ease;
+}
+.book-arrow::after { content: "→"; }
+
+/* ============================================================
+   BOOK PAGE — individual handbook
+   ============================================================ */
+.book-hero {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 80px 40px 60px;
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+
+.back-link {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--fg-3);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 56px;
+  transition: all 0.2s ease;
+}
+.back-link::before { content: "←"; font-size: 13px; }
+.back-link:hover { color: var(--gold); gap: 16px; }
+
+.book-hero-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 60px;
+  align-items: flex-end;
+}
+
+.book-hero-meta {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 24px;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg-3);
+  flex-wrap: wrap;
+}
+.book-hero-meta .vol {
+  color: var(--gold);
+  font-weight: 600;
+}
+.book-hero-meta .dot { color: var(--fg-4); }
+
+.book-hero h1 {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(40px, 6vw, 76px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  margin: 0 0 24px;
+  color: var(--fg);
+}
+.book-hero h1 .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+
+.book-hero .tagline {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(17px, 1.8vw, 20px);
+  line-height: 1.55;
+  color: var(--fg-2);
+  max-width: 660px;
+  margin: 0;
+}
+
+/* Discreet large numeral on the side */
+.book-hero-num {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 200;
+  font-size: clamp(120px, 14vw, 180px);
+  line-height: 0.85;
+  color: var(--gold);
+  opacity: 0.12;
+  letter-spacing: -0.04em;
+  margin: 0;
+  user-select: none;
+  font-feature-settings: "lnum", "tnum";
+}
+
+/* ============================================================
+   TOPICS LIST
+   ============================================================ */
+.topics-section {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 60px 40px 40px;
+}
+
+.topics-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 32px;
+  align-items: center;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.topics-header .label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.32em;
+  color: var(--gold);
+}
+.topics-header .label::before {
+  content: "§";
+  margin-right: 10px;
+  color: var(--fg-3);
+}
+.topics-header .line {
+  height: 1px;
+  background: var(--line);
+}
+.topics-header .count {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-3);
+  letter-spacing: 0.18em;
+}
+
+.topic {
+  display: grid;
+  grid-template-columns: 80px 1fr 120px;
+  gap: 32px;
+  padding: 26px 12px;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+  color: inherit;
+  align-items: center;
+  transition: background 0.25s ease;
+}
+.topic:hover {
+  background: linear-gradient(to right, var(--gold-soft), transparent 70%);
+}
+.topic:hover .topic-num { color: var(--gold); }
+.topic:hover .topic-title { color: var(--gold-bright); }
+
+.topic-num {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 38px;
+  line-height: 1;
+  color: var(--fg-4);
+  letter-spacing: -0.02em;
+  font-feature-settings: "lnum", "tnum";
+  transition: color 0.25s ease;
+}
+
+.topic-title {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(18px, 2vw, 22px);
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+  margin: 0 0 6px;
+  color: var(--fg);
+  transition: color 0.25s ease;
+}
+
+.topic-desc {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--fg-2);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.topic-status {
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--fg-4);
+}
+.topic-status::after { content: "  →"; }
+
+/* ============================================================
+   PAGE NAVIGATION
+   ============================================================ */
+.page-nav {
+  max-width: 1180px;
+  margin: 60px auto 0;
+  padding: 32px 40px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.page-nav a, .page-nav .placeholder {
+  text-decoration: none;
+  color: inherit;
+  padding: 32px 28px;
+  border: 1px solid var(--line);
+  display: block;
+  transition: all 0.25s ease;
+}
+.page-nav a:first-child { border-right: none; }
+.page-nav a:hover {
+  background: var(--gold-soft);
+  border-color: var(--gold-deep);
+  position: relative;
+  z-index: 2;
+}
+
+.nav-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--fg-3);
+  margin-bottom: 14px;
+  display: block;
+}
+.nav-prev .nav-label::before { content: "← "; }
+.nav-next { text-align: right; }
+.nav-next .nav-label::after { content: " →"; }
+
+.nav-title {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: var(--fg);
+}
+.page-nav a:hover .nav-title { color: var(--gold); }
+.page-nav a:hover .nav-label { color: var(--gold); }
+
+.placeholder {
+  opacity: 0.3;
+  pointer-events: none;
+}
+.placeholder .nav-title {
+  color: var(--fg-4);
+  font-style: italic;
+  font-weight: 300;
+}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.footer {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 56px 40px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 24px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--fg-3);
+}
+
+.footer-mark {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--gold);
+  text-transform: none;
+  letter-spacing: 0;
+  text-align: center;
+}
+.footer .right { text-align: right; }
+.footer a {
+  color: var(--fg-3);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.footer a:hover { color: var(--gold); }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 1024px) {
+  .tiers-grid { grid-template-columns: repeat(2, 1fr); }
+  .tier-block:nth-child(2) { border-right: none; }
+  .tier-block:nth-child(1), .tier-block:nth-child(2) {
+    border-bottom: 1px solid var(--line);
+  }
+  .book {
+    grid-template-columns: 70px 1fr 120px;
+    gap: 28px;
+    padding: 36px 12px;
+  }
+  .book-num { font-size: 46px; }
+}
+
+@media (max-width: 720px) {
+  .topbar { padding: 16px 20px; font-size: 9px; letter-spacing: 0.18em; }
+  .topbar .nav-right { gap: 14px; }
+  .topbar .sep { display: none; }
+
+  .hero { padding: 64px 20px 56px; }
+  .hero h1 { max-width: none; }
+  .hero-stats { gap: 32px; padding: 24px 0; }
+  .hero-stat-num { font-size: 32px; }
+
+  .divider { padding: 0 20px; gap: 18px; }
+
+  .tiers { padding: 0 20px; }
+  .tiers-grid { grid-template-columns: 1fr; }
+  .tier-block {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    padding: 28px 18px;
+  }
+  .tier-block:last-child { border-bottom: none; }
+
+  .books-section { padding: 0 20px 64px; }
+  .book {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 32px 8px;
+  }
+  .book-num {
+    font-size: 40px;
+    color: var(--gold);
+    opacity: 0.6;
+  }
+  .book-side {
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+  .book-side .topics-count {
+    display: inline;
+    font-size: 22px;
+    margin-bottom: 0;
+    margin-right: 6px;
+  }
+  .book-arrow { margin-top: 0; }
+
+  .book-hero { padding: 48px 20px 40px; }
+  .back-link { margin-bottom: 36px; }
+  .book-hero-grid { grid-template-columns: 1fr; gap: 24px; position: relative; }
+  .book-hero-num {
+    position: absolute;
+    top: -12px;
+    right: 0;
+    font-size: 90px;
+    opacity: 0.08;
+    z-index: 0;
+  }
+  .book-hero-main { position: relative; z-index: 1; }
+
+  .topics-section { padding: 40px 20px 32px; }
+  .topics-header { gap: 14px; margin-bottom: 24px; padding-bottom: 16px; }
+  .topics-header .count { font-size: 9px; }
+  .topic {
+    grid-template-columns: 56px 1fr;
+    gap: 18px;
+    padding: 22px 4px;
+  }
+  .topic-num { font-size: 28px; }
+  .topic-status {
+    grid-column: 2;
+    text-align: left;
+    margin-top: 6px;
+  }
+
+  .page-nav {
+    padding: 28px 20px;
+    grid-template-columns: 1fr;
+  }
+  .page-nav a, .page-nav .placeholder { padding: 22px 20px; }
+  .page-nav a:first-child {
+    border-right: 1px solid var(--line);
+    border-bottom: none;
+  }
+  .nav-next { text-align: left; }
+  .nav-next .nav-label::after { content: " →"; }
+
+  .footer {
+    padding: 36px 20px;
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 14px;
+  }
+  .footer .right { text-align: center; }
+}
+
+/* ============================================================
+   TOPIC PAGE STYLES — extends premium V2 dark theme
+   ============================================================ */
+
+/* Container for prose content */
+.topic-page {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 0 40px 80px;
+}
+
+.topic-page-header {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 70px 40px 50px;
+  border-bottom: 1px solid var(--line);
+}
+
+.topic-crumbs {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg-3);
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+}
+.topic-crumbs a {
+  color: var(--fg-3);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.topic-crumbs a:hover { color: var(--gold); }
+.topic-crumbs .dot { color: var(--fg-4); }
+.topic-crumbs .current { color: var(--gold); }
+
+.topic-page-meta {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg-3);
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.topic-page-meta .topic-num-badge {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.topic-page-header h1 {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(36px, 5.5vw, 64px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin: 0 0 24px;
+  color: var(--fg);
+}
+.topic-page-header h1 .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+
+.topic-page-header .lede {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(17px, 2vw, 21px);
+  line-height: 1.55;
+  color: var(--fg-2);
+  max-width: 680px;
+  margin: 0;
+}
+
+/* ============================================================
+   PROSE CONTENT
+   ============================================================ */
+.prose {
+  padding-top: 56px;
+}
+
+.prose h2 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(26px, 3.5vw, 36px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 72px 0 24px;
+  color: var(--fg);
+  position: relative;
+}
+.prose h2:first-child { margin-top: 0; }
+.prose h2 .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+.prose h2::before {
+  content: "";
+  display: block;
+  width: 32px;
+  height: 1px;
+  background: var(--gold);
+  margin-bottom: 20px;
+  opacity: 0.6;
+}
+
+.prose h3 {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 22px;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  margin: 48px 0 18px;
+  color: var(--fg);
+}
+
+.prose h4 {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--gold);
+  margin: 36px 0 14px;
+  font-weight: 600;
+}
+
+.prose p {
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--fg);
+  margin: 0 0 22px;
+}
+
+.prose p em, .prose li em {
+  font-style: italic;
+  color: var(--gold);
+}
+
+.prose strong {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.prose ul, .prose ol {
+  margin: 0 0 28px;
+  padding-left: 24px;
+}
+
+.prose li {
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--fg);
+  margin-bottom: 10px;
+}
+.prose li::marker { color: var(--gold); }
+
+/* Inline code */
+.prose code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--bg-3);
+  color: var(--gold-bright);
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--line-strong);
+  letter-spacing: 0;
+}
+
+/* Drop cap on first paragraph of prose */
+.prose > p:first-of-type::first-letter {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-style: italic;
+  font-size: 4.5em;
+  float: left;
+  line-height: 0.85;
+  margin: 0.05em 0.12em 0 0;
+  color: var(--gold);
+}
+
+/* ============================================================
+   CODE BLOCKS
+   ============================================================ */
+.codeblock {
+  background: var(--bg-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  margin: 28px 0 32px;
+  overflow: hidden;
+  position: relative;
+}
+.codeblock-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-2);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--fg-3);
+}
+.codeblock-head .lang {
+  color: var(--gold);
+  font-weight: 600;
+}
+.codeblock-head .file {
+  color: var(--fg-3);
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 0.04em;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.codeblock pre {
+  margin: 0;
+  padding: 20px 22px;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  line-height: 1.65;
+  overflow-x: auto;
+  color: var(--fg);
+  white-space: pre;
+}
+.codeblock pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+/* Syntax highlighting */
+.tok-kw    { color: #d99a4e; font-weight: 500; }  /* keyword: amber */
+.tok-fn    { color: #c9a961; }                     /* function: gold */
+.tok-str   { color: #a8c98a; }                     /* string: muted green */
+.tok-num   { color: #d4a8a8; }                     /* number: dusty pink */
+.tok-type  { color: #8ab5c9; }                     /* type: muted blue */
+.tok-com   { color: #6b6253; font-style: italic; } /* comment: muted */
+.tok-pp    { color: #b88aa8; }                     /* preprocessor: mauve */
+.tok-reg   { color: #d4a874; font-weight: 500; }   /* register name */
+.tok-op    { color: #b8ad94; }                     /* operator */
+
+/* ============================================================
+   DIAGRAMS — ASCII art boxes
+   ============================================================ */
+.diagram {
+  background: var(--bg-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 24px;
+  margin: 28px 0 32px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-x: auto;
+  color: var(--fg);
+  white-space: pre;
+}
+.diagram-caption {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--fg-3);
+  text-align: center;
+  margin: -16px 0 32px;
+}
+
+/* SVG diagram container */
+.svg-diagram {
+  background: var(--bg-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 24px;
+  margin: 28px 0 12px;
+  text-align: center;
+  overflow-x: auto;
+}
+.svg-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ============================================================
+   CALLOUTS
+   ============================================================ */
+.callout {
+  border-left: 3px solid var(--gold);
+  background: var(--gold-soft);
+  padding: 20px 24px;
+  margin: 28px 0 32px;
+  border-radius: 0 4px 4px 0;
+}
+.callout-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: var(--gold);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.callout p {
+  margin-bottom: 10px;
+  color: var(--fg);
+  font-size: 16px;
+}
+.callout p:last-child { margin-bottom: 0; }
+.callout.warn {
+  border-left-color: #c97a5a;
+  background: rgba(201, 122, 90, 0.08);
+}
+.callout.warn .callout-label { color: #d99a7a; }
+
+.callout.key {
+  border-left-color: var(--gold-bright);
+  background: rgba(217, 187, 116, 0.06);
+}
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+.table-wrap {
+  margin: 28px 0 32px;
+  overflow-x: auto;
+}
+.prose-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.prose-table th, .prose-table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  color: var(--fg);
+}
+.prose-table th {
+  background: var(--bg-3);
+  color: var(--gold);
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  border-bottom: 1px solid var(--line-strong);
+}
+.prose-table tr:hover td {
+  background: var(--gold-soft);
+}
+
+/* ============================================================
+   INTERVIEW Q&A
+   ============================================================ */
+.qa-section {
+  margin-top: 64px;
+  padding-top: 48px;
+  border-top: 1px solid var(--line);
+}
+.qa-section-head {
+  margin-bottom: 32px;
+}
+.qa-section-head .label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: var(--gold);
+  margin-bottom: 12px;
+}
+.qa-section-head .label::before {
+  content: "§ ";
+  color: var(--fg-3);
+}
+.qa-section-head h2 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(28px, 4vw, 38px);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  margin: 0;
+  color: var(--fg);
+}
+.qa-section-head h2 .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+.qa-section-head h2::before { display: none; }
+
+.qa {
+  border-bottom: 1px solid var(--line);
+  padding: 24px 0;
+}
+.qa:last-child { border-bottom: none; }
+
+.qa-q {
+  display: flex;
+  gap: 18px;
+  align-items: baseline;
+  margin-bottom: 14px;
+}
+.qa-num {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--gold);
+  line-height: 1;
+  flex-shrink: 0;
+}
+.qa-question {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 1.4;
+  color: var(--fg);
+  letter-spacing: -0.01em;
+}
+.qa-answer {
+  margin-left: 40px;
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--fg-2);
+}
+.qa-answer p {
+  margin: 0 0 14px;
+  color: var(--fg-2);
+}
+.qa-answer p:last-child { margin-bottom: 0; }
+.qa-answer code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--bg-3);
+  color: var(--gold-bright);
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+.qa-answer strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+/* ============================================================
+   TOPIC NAV (prev / next topic)
+   ============================================================ */
+.topic-nav {
+  max-width: 820px;
+  margin: 60px auto 0;
+  padding: 32px 40px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.topic-nav a, .topic-nav .placeholder {
+  text-decoration: none;
+  color: inherit;
+  padding: 24px 22px;
+  border: 1px solid var(--line);
+  display: block;
+  transition: all 0.25s ease;
+}
+.topic-nav a:first-child { border-right: none; }
+.topic-nav a:hover {
+  background: var(--gold-soft);
+  border-color: var(--gold-deep);
+  z-index: 2;
+  position: relative;
+}
+.topic-nav .nav-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--fg-3);
+  margin-bottom: 10px;
+  display: block;
+}
+.topic-nav .nav-prev .nav-label::before { content: "← "; }
+.topic-nav .nav-next { text-align: right; }
+.topic-nav .nav-next .nav-label::after { content: " →"; }
+.topic-nav .nav-title {
+  font-family: var(--serif);
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--fg);
+}
+.topic-nav a:hover .nav-title { color: var(--gold); }
+.topic-nav a:hover .nav-label { color: var(--gold); }
+.topic-nav .placeholder {
+  opacity: 0.3;
+  pointer-events: none;
+}
+.topic-nav .placeholder .nav-title {
+  color: var(--fg-4);
+  font-style: italic;
+  font-weight: 300;
+}
+
+/* ============================================================
+   MOBILE RESPONSIVE for topic pages
+   ============================================================ */
+@media (max-width: 720px) {
+  .topic-page-header { padding: 40px 20px 32px; }
+  .topic-page { padding: 0 20px 56px; }
+  .topic-crumbs { margin-bottom: 24px; gap: 8px; font-size: 8px; }
+  .prose { padding-top: 36px; }
+  .prose h2 { margin: 48px 0 18px; }
+  .prose h3 { margin: 32px 0 14px; }
+  .prose p, .prose li { font-size: 16px; }
+  .prose > p:first-of-type::first-letter { font-size: 3.5em; }
+  .codeblock pre { font-size: 12px; padding: 16px 18px; }
+  .diagram { font-size: 11px; padding: 18px; }
+  .callout { padding: 16px 18px; margin: 22px 0; }
+  .qa-answer { margin-left: 0; }
+  .qa-question { font-size: 17px; }
+  .qa-answer { font-size: 15px; }
+  .topic-nav { padding: 24px 20px; grid-template-columns: 1fr; }
+  .topic-nav a, .topic-nav .placeholder { padding: 18px 18px; }
+  .topic-nav a:first-child {
+    border-right: 1px solid var(--line);
+    border-bottom: none;
+  }
+  .topic-nav .nav-next { text-align: left; }
+  .topic-nav .nav-next .nav-label::after { content: " →"; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="topbar">
+  <a href="../index.html" class="brand">Embedded Systems Mastery</a>
+  <span class="nav-right">
+    <a href="HB2.html">HB2 Index</a>
+    <span class="sep">·</span>
+    <span>Topic 02</span>
+  </span>
+</div>
+
+<header class="topic-page-header">
+  <div class="topic-crumbs">
+    <a href="../index.html">Series</a>
+    <span class="dot">·</span>
+    <a href="HB2.html">HB2</a>
+    <span class="dot">·</span>
+    <span class="current">Topic 02</span>
+  </div>
+  <div class="topic-page-meta">
+    <span class="topic-num-badge">Topic 02</span>
+    <span>·</span>
+    <span>HB2 · ARM Architecture &amp; MCU Internals</span>
+  </div>
+  <h1>Programmer's Model &amp; <span class='em'>Register File</span></h1>
+  <p class="lede">Sixteen 32-bit registers, three special registers, two stacks, and one calling convention. Once you can read this map fluently, every disassembly listing tells you a story.</p>
+</header>
+
+<article class="topic-page">
+  <div class="prose">
+
+<p>Every assembly listing, every HardFault dump, every debugger stack trace is written in the language of the Cortex-M <em>programmer's model</em>. This topic gives you fluency in that language: the sixteen general-purpose registers, the special-purpose registers that the compiler does not touch but you absolutely will, the two stack pointers, and the AAPCS calling convention that ties them all together.</p>
+
+<p>Read this once and the next time GDB drops you into a backtrace at <code>R7</code>, you'll know what that means without thinking.</p>
+
+<h2>The <span class="em">register file</span> — sixteen 32-bit registers</h2>
+
+<p>Every Cortex-M core has sixteen 32-bit general-purpose registers, named <code>R0</code> through <code>R15</code>. Twelve of them are genuinely general purpose. The last four have hardware-assigned roles you cannot escape.</p>
+
+<div class="diagram">           Cortex-M General-Purpose Register File
+
+  ┌──────────┬──────────────────────────────────────────────┐
+  │  R0      │  Argument 1 / Return value 1                 │
+  │  R1      │  Argument 2 / Return value 2                 │
+  │  R2      │  Argument 3                                  │
+  │  R3      │  Argument 4                                  │
+  │  R4      │  Local variable (callee-saved)               │
+  │  R5      │  Local variable (callee-saved)               │
+  │  R6      │  Local variable (callee-saved)               │
+  │  R7      │  Local variable (callee-saved) / frame ptr   │
+  │  R8      │  Local variable (callee-saved)               │
+  │  R9      │  Local variable (callee-saved)               │
+  │  R10     │  Local variable (callee-saved)               │
+  │  R11     │  Local variable (callee-saved) / frame ptr   │
+  │  R12 IP  │  Intra-Procedure scratch                     │
+  │  R13 SP  │  Stack Pointer  (MSP or PSP)                 │
+  │  R14 LR  │  Link Register  (return address)             │
+  │  R15 PC  │  Program Counter  (next instruction to fetch)│
+  └──────────┴──────────────────────────────────────────────┘</div>
+
+<p>The aliases at the bottom matter:</p>
+
+<ul>
+<li><strong>R13 = SP</strong> (Stack Pointer). Push and pop instructions implicitly modify this. There are actually <em>two</em> stack pointers in hardware (MSP and PSP) — covered below.</li>
+<li><strong>R14 = LR</strong> (Link Register). When a <code>BL</code> (branch with link) instruction executes, the return address is written to LR. Function epilogues do <code>BX LR</code> to return.</li>
+<li><strong>R15 = PC</strong> (Program Counter). Points to the instruction being fetched, which in Thumb mode is always <em>two ahead</em> of what is executing. The PC always has the Thumb-state bit (bit 0) set on any branch destination.</li>
+</ul>
+
+<div class="callout key">
+<div class="callout-label">Key Idea</div>
+<p>In Thumb-2, the PC reads as the address of the currently executing instruction <strong>plus 4</strong>. This is the "pipeline disclosure" effect — the CPU has already fetched two ahead. Code that does PC-relative addressing must account for this offset, and it is one of the most common surprises when reading hand-written assembly.</p>
+</div>
+
+<h2>The <span class="em">special</span> registers</h2>
+
+<p>Beyond the sixteen named registers, the M-profile architecture defines a handful of <em>special-purpose registers</em> reachable only via the <code>MSR</code> and <code>MRS</code> instructions (Move to/from Special Register). You will see these in fault handlers, RTOS context switches, and any time you read a debugger dump.</p>
+
+<h3>xPSR — the Program Status Register family</h3>
+
+<p>What looks like a single PSR is actually three overlapping views into one register: <code>APSR</code>, <code>IPSR</code>, and <code>EPSR</code>. The combined view is <code>xPSR</code>.</p>
+
+<div class="diagram"> 31 30 29 28 27  26 ...  16 15 ...   10  9 ...  0
+ ┌──┬──┬──┬──┬──┬─────────┬───────────────┬────────┐
+ │N │Z │C │V │Q │   ICI   │   T-bit etc   │ IPSR   │
+ │  │  │  │  │  │   /IT   │   (EPSR)      │ excpt# │
+ └──┴──┴──┴──┴──┴─────────┴───────────────┴────────┘
+   └─── APSR ───┘                          └ IPSR ┘
+       (flags)                              (which
+                                             exception
+                                             we're in)</div>
+
+<p>What each piece does:</p>
+
+<ul>
+<li><strong>APSR</strong> (Application PSR). The four classic condition flags: <em>N</em>egative, <em>Z</em>ero, <em>C</em>arry, o<em>V</em>erflow. Plus <em>Q</em> (saturation) when DSP extension is present. These are what conditional branches test.</li>
+<li><strong>IPSR</strong> (Interrupt PSR). Bottom 9 bits hold the exception number currently being serviced. Zero means thread mode (not in an exception). 1 is Reset, 2 is NMI, 3 is HardFault, and so on up to <code>16 + n</code> for IRQ <em>n</em>.</li>
+<li><strong>EPSR</strong> (Execution PSR). Contains the T-bit (always 1 in Thumb-2; clearing it triggers a UsageFault) and the IT (If-Then) block state for conditional execution.</li>
+</ul>
+
+<h3>PRIMASK, FAULTMASK, BASEPRI — interrupt control</h3>
+
+<p>Three special registers control which interrupts can preempt the current execution. Together they form the interrupt-masking system, and understanding them is how you write critical sections that actually work.</p>
+
+<div class="table-wrap">
+<table class="prose-table">
+<thead>
+<tr><th>Register</th><th>Width</th><th>What it does</th></tr>
+</thead>
+<tbody>
+<tr><td>PRIMASK</td><td>1 bit</td><td>When set, disables all configurable-priority exceptions (everything except NMI and HardFault).</td></tr>
+<tr><td>FAULTMASK</td><td>1 bit</td><td>When set, disables all exceptions <em>including HardFault</em>. NMI still gets through. Auto-cleared on exception return.</td></tr>
+<tr><td>BASEPRI</td><td>8 bits</td><td>Disables all exceptions with priority <em>numerically greater than or equal to</em> BASEPRI (i.e. less urgent). 0 means disabled. Cortex-M3 and up.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>The CMSIS intrinsics that wrap these are:</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">critical_section.c</span></div>
+<pre><code><span class="tok-pp">#include</span> <span class="tok-str">"cmsis_gcc.h"</span>
+
+<span class="tok-com">/* Crude: disable ALL interrupts (except NMI / HardFault).
+ * Use only for the shortest possible windows. */</span>
+<span class="tok-kw">void</span> <span class="tok-fn">critical_crude</span>(<span class="tok-kw">void</span>)
+{
+    <span class="tok-type">uint32_t</span> primask = <span class="tok-fn">__get_PRIMASK</span>();
+    <span class="tok-fn">__disable_irq</span>();              <span class="tok-com">/* CPSID i  →  PRIMASK = 1 */</span>
+
+    <span class="tok-com">/* ...critical work... */</span>
+
+    <span class="tok-fn">__set_PRIMASK</span>(primask);       <span class="tok-com">/* restore — preserves nesting */</span>
+}
+
+<span class="tok-com">/* Surgical: keep high-priority IRQs (e.g. motor PWM) alive
+ * while blocking only mid/low priority. */</span>
+<span class="tok-kw">void</span> <span class="tok-fn">critical_surgical</span>(<span class="tok-kw">void</span>)
+{
+    <span class="tok-type">uint32_t</span> basepri = <span class="tok-fn">__get_BASEPRI</span>();
+    <span class="tok-fn">__set_BASEPRI</span>(<span class="tok-num">0x40</span>);          <span class="tok-com">/* block priority &gt;= 0x40 */</span>
+
+    <span class="tok-com">/* ...critical work...
+     * Priority 0x00-0x3F can still preempt us.  */</span>
+
+    <span class="tok-fn">__set_BASEPRI</span>(basepri);
+}</code></pre>
+</div>
+
+<div class="callout">
+<div class="callout-label">Gotcha</div>
+<p>BASEPRI uses <em>raw</em> priority values — the actual bits the NVIC compares — not the logical priorities you usually pass to <code>NVIC_SetPriority()</code>. If your silicon implements 4 priority bits (the common case), priorities are stored in the upper 4 bits of a byte: priority 5 is encoded as <code>0x50</code>. Setting <code>BASEPRI = 5</code> when you meant priority 5 will block almost everything by accident.</p>
+</div>
+
+<h3>CONTROL — privilege and stack selection</h3>
+
+<p>The CONTROL register has just three bits but they decide major things:</p>
+
+<div class="diagram"> bit 0  nPRIV   0 = privileged, 1 = unprivileged (thread mode only)
+ bit 1  SPSEL   0 = use MSP,    1 = use PSP    (thread mode only)
+ bit 2  FPCA    1 = FPU context active (auto-set by FPU instruction)</div>
+
+<p>After reset, the CPU is in <em>thread mode</em>, <em>privileged</em>, using the <em>MSP</em>. An RTOS will typically flip SPSEL to 1 once it has started a task, so each task runs on its own PSP-based stack while the kernel ISRs continue to use MSP. Privilege drops only if you explicitly call <code>__set_CONTROL()</code> to set nPRIV — useful for sandboxing untrusted task code behind an MPU.</p>
+
+<h2>The <span class="em">two stacks</span> — MSP and PSP</h2>
+
+<p>Cortex-M has a dual-stack design that confuses beginners but turns out to be exactly the right abstraction for an RTOS.</p>
+
+<div class="diagram">            Two Stack Pointers, One Cortex-M
+
+  ┌──────────────────────────────────────────────────────┐
+  │   THREAD MODE                                        │
+  │   (normal application code, can use either stack)    │
+  │                                                      │
+  │   CONTROL.SPSEL = 0  →  uses MSP                     │
+  │   CONTROL.SPSEL = 1  →  uses PSP                     │
+  └──────────────────────────────────────────────────────┘
+                          │
+                          │  (exception fires)
+                          ▼
+  ┌──────────────────────────────────────────────────────┐
+  │   HANDLER MODE                                       │
+  │   (always uses MSP, regardless of SPSEL)             │
+  │                                                      │
+  │   The hardware always pushes the exception frame     │
+  │   onto whichever stack thread mode was using, then   │
+  │   switches to MSP for the handler.                   │
+  └──────────────────────────────────────────────────────┘
+
+  Layout in memory:
+
+           ┌────────────────────┐  high address
+           │   MSP grows down   │
+           │                    │
+           └────────────────────┘
+                    │
+                    │
+           ┌────────────────────┐
+           │   PSP grows down   │
+           │                    │
+           └────────────────────┘  low address</div>
+
+<p>A bare-metal program with no RTOS uses MSP for everything. An RTOS hands each task its own PSP — when a context switch happens, the kernel saves the task's PSP value, loads the next task's PSP, and execution resumes seamlessly. The kernel itself, including all ISRs, runs on MSP, so RTOS code never has to worry about stack-overflowing a tiny user task.</p>
+
+<h2>The <span class="em">AAPCS</span> — how functions actually call each other</h2>
+
+<p>AAPCS — <em>ARM Architecture Procedure Call Standard</em> — is the contract between caller and callee. The C compiler always follows it. Hand-written assembly must follow it to interoperate with C. Stack unwinding, fault forensics, and RTOS context switching all rely on it being followed correctly.</p>
+
+<h3>Argument passing</h3>
+
+<p>The first four arguments to a function go in <code>R0–R3</code>. Anything beyond that goes on the stack. Return value is in <code>R0</code> (or <code>R0:R1</code> for a 64-bit return).</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C / ARM Asm</span><span class="file">aapcs_demo.c</span></div>
+<pre><code><span class="tok-com">/* C source */</span>
+<span class="tok-type">int32_t</span> <span class="tok-fn">compute</span>(<span class="tok-type">int32_t</span> a, <span class="tok-type">int32_t</span> b, <span class="tok-type">int32_t</span> c, <span class="tok-type">int32_t</span> d,
+                <span class="tok-type">int32_t</span> e, <span class="tok-type">int32_t</span> f)
+{
+    <span class="tok-kw">return</span> a + b + c + d + e + f;
+}
+
+<span class="tok-com">/* Compiles approximately to:
+ *
+ *   compute:
+ *       ADD     R0, R0, R1      ; R0 = a + b
+ *       ADD     R0, R0, R2      ; R0 += c
+ *       ADD     R0, R0, R3      ; R0 += d
+ *       LDR     R1, [SP, #0]    ; e from stack
+ *       ADD     R0, R0, R1
+ *       LDR     R1, [SP, #4]    ; f from stack
+ *       ADD     R0, R0, R1
+ *       BX      LR              ; return (value in R0)
+ *
+ * Note: a..d came in R0..R3.  e and f spilled to stack.
+ *       Return value left in R0. */</span></code></pre>
+</div>
+
+<h3>Caller-saved versus callee-saved</h3>
+
+<p>This is the most useful AAPCS rule to memorise:</p>
+
+<div class="table-wrap">
+<table class="prose-table">
+<thead>
+<tr><th>Registers</th><th>Saved by</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td>R0–R3, R12, LR</td><td>Caller</td><td>If you need their value after a function call, push them yourself.</td></tr>
+<tr><td>R4–R11</td><td>Callee</td><td>Any function that modifies these must restore them on exit.</td></tr>
+<tr><td>SP</td><td>Both</td><td>Must be 8-byte aligned at any public function boundary.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Why the split? Caller-saved registers are <em>scratch</em> — fast to use, but they may be clobbered by any function call. Callee-saved registers are stable across calls — better for values you need across many statements.</p>
+
+<h3>The stacked exception frame</h3>
+
+<p>When any exception fires, the hardware automatically pushes eight registers onto the active stack before vectoring to the handler. This is the <em>exception frame</em> — and reading it is how you do fault forensics.</p>
+
+<div class="diagram">       Exception Frame (low addr → high addr)
+       (what the hardware pushes for you)
+
+       SP after entry →  ┌──────────┐
+                         │   R0     │  ← argument 1 at time of fault
+                         ├──────────┤
+                         │   R1     │  ← argument 2
+                         ├──────────┤
+                         │   R2     │  ← argument 3
+                         ├──────────┤
+                         │   R3     │  ← argument 4
+                         ├──────────┤
+                         │   R12    │
+                         ├──────────┤
+                         │   LR     │  ← return address of faulting function
+                         ├──────────┤
+                         │   PC     │  ← address of the faulting instruction
+                         ├──────────┤
+                         │   xPSR   │
+       Pre-fault SP   →  └──────────┘
+                            (if FPU active and lazy stacking off,
+                             16 more words of S0-S15 + FPSCR follow)</div>
+
+<p>When you stand in a HardFault handler and want to know <em>which line of C code triggered the fault</em>, you read PC out of this frame. The corresponding source line is decoded by your debugger or <code>addr2line</code>. Topic 03 of HB10 covers this forensic process in depth.</p>
+
+<h2>Test code — <span class="em">stack pointer and register inspection</span></h2>
+
+<p>This is a focused test routine you can drop into any project to verify the register file works as expected: it prints the live values of MSP, PSP, CONTROL, and the current stack pointer in use. Useful during RTOS bring-up and when investigating fault handlers.</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">reg_inspect.c</span></div>
+<pre><code><span class="tok-pp">#include</span> <span class="tok-str">&lt;stdint.h&gt;</span>
+<span class="tok-pp">#include</span> <span class="tok-str">&lt;stdio.h&gt;</span>
+<span class="tok-pp">#include</span> <span class="tok-str">"cmsis_gcc.h"</span>
+
+<span class="tok-kw">static</span> <span class="tok-type">uint32_t</span> <span class="tok-fn">read_current_sp</span>(<span class="tok-kw">void</span>)
+{
+    <span class="tok-type">uint32_t</span> sp;
+    <span class="tok-fn">__asm</span> <span class="tok-kw">volatile</span> (<span class="tok-str">"mov %0, sp"</span> : <span class="tok-str">"=r"</span> (sp));
+    <span class="tok-kw">return</span> sp;
+}
+
+<span class="tok-kw">void</span> <span class="tok-fn">dump_registers</span>(<span class="tok-kw">void</span>)
+{
+    <span class="tok-type">uint32_t</span> msp     = <span class="tok-fn">__get_MSP</span>();
+    <span class="tok-type">uint32_t</span> psp     = <span class="tok-fn">__get_PSP</span>();
+    <span class="tok-type">uint32_t</span> control = <span class="tok-fn">__get_CONTROL</span>();
+    <span class="tok-type">uint32_t</span> primask = <span class="tok-fn">__get_PRIMASK</span>();
+    <span class="tok-type">uint32_t</span> ipsr    = <span class="tok-fn">__get_IPSR</span>();
+    <span class="tok-type">uint32_t</span> sp_now  = <span class="tok-fn">read_current_sp</span>();
+
+    <span class="tok-fn">printf</span>(<span class="tok-str">"MSP       = 0x%08lX\n"</span>, msp);
+    <span class="tok-fn">printf</span>(<span class="tok-str">"PSP       = 0x%08lX\n"</span>, psp);
+    <span class="tok-fn">printf</span>(<span class="tok-str">"CONTROL   = 0x%08lX  (nPRIV=%u SPSEL=%u FPCA=%u)\n"</span>,
+           control,
+           (control     ) &amp; <span class="tok-num">1</span>,
+           (control &gt;&gt; <span class="tok-num">1</span>) &amp; <span class="tok-num">1</span>,
+           (control &gt;&gt; <span class="tok-num">2</span>) &amp; <span class="tok-num">1</span>);
+    <span class="tok-fn">printf</span>(<span class="tok-str">"PRIMASK   = %lu  (%s)\n"</span>,
+           primask, primask ? <span class="tok-str">"IRQ disabled"</span> : <span class="tok-str">"IRQ enabled"</span>);
+    <span class="tok-fn">printf</span>(<span class="tok-str">"IPSR      = %lu  (%s)\n"</span>,
+           ipsr, ipsr ? <span class="tok-str">"handler mode"</span> : <span class="tok-str">"thread mode"</span>);
+    <span class="tok-fn">printf</span>(<span class="tok-str">"SP-in-use = 0x%08lX\n"</span>, sp_now);
+}</code></pre>
+</div>
+
+<p>Expected output from thread mode on a bare-metal program with no RTOS:</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">Console</span><span class="file">SWO output</span></div>
+<pre><code>MSP       = 0x20020F88
+PSP       = 0x00000000        ← never been set; expected on bare metal
+CONTROL   = 0x00000000        ← privileged, MSP, no FPU activity
+PRIMASK   = 0  (IRQ enabled)
+IPSR      = 0  (thread mode)
+SP-in-use = 0x20020F88        ← same as MSP, as expected</code></pre>
+</div>
+
+<div class="callout warn">
+<div class="callout-label">When PSP looks wrong</div>
+<p>If you ever see PSP set to <code>0xFFFFFFFF</code> or some other obvious garbage on a system you thought was bare-metal, suspect that a stray <code>__set_CONTROL</code> call corrupted CONTROL.SPSEL. The hardware doesn't validate PSP at write time — it just blindly trusts the pointer at the next push.</p>
+</div>
+
+<div class="qa-section">
+<div class="qa-section-head">
+  <div class="label">Interview Questions</div>
+  <h2>Interview Q &amp; A — <span class="em">Register File</span></h2>
+</div>
+
+<div class="qa">
+  <div class="qa-q">
+    <span class="qa-num">Q1.</span>
+    <span class="qa-question">What does AAPCS stand for, and why do you care about it?</span>
+  </div>
+  <div class="qa-answer">
+    <p><strong>ARM Architecture Procedure Call Standard.</strong> It defines how arguments are passed, where return values live, which registers must be preserved across calls, and how the stack is aligned.</p>
+    <p>You care for three concrete reasons: stack unwinders (for fault decode and debugger backtraces) assume AAPCS is followed, hand-written assembly must conform to it to interoperate with C, and any RTOS context switch is essentially an AAPCS-compatible save and restore of the same set of registers.</p>
+  </div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">
+    <span class="qa-num">Q2.</span>
+    <span class="qa-question">Which registers are caller-saved and which are callee-saved on Cortex-M?</span>
+  </div>
+  <div class="qa-answer">
+    <p><strong>Caller-saved:</strong> R0–R3, R12, LR. The caller must save these before a call if it needs them afterwards.</p>
+    <p><strong>Callee-saved:</strong> R4–R11. Any function that modifies these registers must save them on entry and restore them on exit. SP must be 8-byte aligned at function boundaries — that's also AAPCS.</p>
+    <p>This is why hand-written assembly typically begins with <code>PUSH {R4-R11, LR}</code> if it uses those registers, and ends with <code>POP {R4-R11, PC}</code>.</p>
+  </div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">
+    <span class="qa-num">Q3.</span>
+    <span class="qa-question">What is the difference between MSP and PSP, and when does each get used?</span>
+  </div>
+  <div class="qa-answer">
+    <p>MSP — Main Stack Pointer — is the default. It is what the CPU comes up using after reset, and it is always used in handler mode (i.e. inside any exception or interrupt).</p>
+    <p>PSP — Process Stack Pointer — is optional. Thread mode can be configured to use it by setting <code>CONTROL.SPSEL = 1</code>. PSP exists primarily for RTOS use: each task gets its own PSP, so the kernel can switch tasks by swapping PSP values while keeping a single MSP for itself and all ISRs.</p>
+    <p>On a bare-metal program with no RTOS, PSP is never touched and effectively does not exist.</p>
+  </div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">
+    <span class="qa-num">Q4.</span>
+    <span class="qa-question">What is in the stacked exception frame, and why is it useful?</span>
+  </div>
+  <div class="qa-answer">
+    <p>When any exception fires, the CPU automatically pushes 8 words onto the active stack: R0, R1, R2, R3, R12, LR, PC, xPSR. If the FPU was active and lazy stacking is off, S0–S15 and FPSCR are stacked too — that's 18 more words.</p>
+    <p>The frame is useful for two things. First, <strong>fault forensics</strong>: in a HardFault handler, the PC value in the frame tells you exactly which instruction faulted, which is how you find the C line that caused the fault. Second, <strong>RTOS context switching</strong>: a switching scheduler relies on this frame being there, so it only needs to save the additional R4–R11 manually — the hardware has done the rest.</p>
+  </div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">
+    <span class="qa-num">Q5.</span>
+    <span class="qa-question">What is the difference between PRIMASK and BASEPRI, and when would you use each?</span>
+  </div>
+  <div class="qa-answer">
+    <p><strong>PRIMASK</strong> is a single bit. When set, it disables every configurable-priority exception — every interrupt, every SysTick, everything except NMI and HardFault. It is sometimes called the "big hammer".</p>
+    <p><strong>BASEPRI</strong> is an 8-bit threshold. It disables exceptions whose priority is numerically greater than or equal to (i.e. less urgent than) BASEPRI. So you can block low and mid priority interrupts while still letting a high-priority motor PWM interrupt through. BASEPRI exists on Cortex-M3 and up; it is not on M0/M0+.</p>
+    <p>Use PRIMASK for the very shortest critical sections (a few cycles updating a flag). Use BASEPRI for longer sections in real-time systems where some high-priority interrupts must continue to fire — for example, an RTOS critical section that protects scheduler state but keeps motor or audio ISRs alive.</p>
+  </div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">
+    <span class="qa-num">Q6.</span>
+    <span class="qa-question">If the PC always reads as the current instruction plus 4, how do PC-relative loads work in compiler-generated code?</span>
+  </div>
+  <div class="qa-answer">
+    <p>The compiler accounts for the offset when it emits PC-relative load instructions like <code>LDR R0, [PC, #20]</code>. The "+4 pipeline disclosure" effect is well-defined: the PC value used by these instructions is always the address of the current instruction plus 4 (in Thumb-2). So when you read the assembly listing, that <code>#20</code> displacement is measured from PC = current + 4, not from the instruction itself.</p>
+    <p>This bites people writing hand assembly. The classic gotcha is computing a literal pool offset by hand and being off by 4. Modern toolchains let you use a label and let the assembler do the arithmetic.</p>
+  </div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">
+    <span class="qa-num">Q7.</span>
+    <span class="qa-question">In CONTROL register, what does setting the nPRIV bit do, and why would you do it?</span>
+  </div>
+  <div class="qa-answer">
+    <p>Setting <code>CONTROL.nPRIV = 1</code> drops thread mode from privileged into <em>unprivileged</em> execution. Once unprivileged, the code cannot access privileged-only special registers (PRIMASK, BASEPRI, CONTROL itself), and any MPU regions marked privileged-only become inaccessible — touching them causes a MemManage fault.</p>
+    <p>You do this when running untrusted task code in an RTOS. The kernel keeps itself in privileged mode, and runs user tasks unprivileged behind an MPU. A bug or buffer overflow in a user task then traps cleanly instead of being able to corrupt the kernel or other tasks. This is the foundation of memory protection on Cortex-M without an MMU.</p>
+  </div>
+</div>
+
+</div>
+
+  </div>
+</article>
+
+<nav class="topic-nav">
+  <a href="HB2-T01.html" class="nav-prev">
+    <span class="nav-label">Previous · Topic 01</span>
+    <div class="nav-title">Processor Architectures Overview</div>
+  </a>
+  <a href="HB2-T03.html" class="nav-next">
+    <span class="nav-label">Next · Topic 03</span>
+    <div class="nav-title">Memory Map, Bus Matrix & AHB / APB</div>
+  </a>
+</nav>
+
+<footer class="footer">
+  <span>HB2 · Topic 02</span>
+  <span class="footer-mark">§</span>
+  <span class="right"><a href="HB2.html">Back to HB2 Index</a></span>
+</footer>
+
+</div>
+</body>
+</html>

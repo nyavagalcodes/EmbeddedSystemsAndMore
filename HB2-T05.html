@@ -1,0 +1,1743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HB2 · Topic 05 · Cache Hierarchy, MMU &amp; <span class='em'>TLB</span> — Embedded Systems Mastery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,200;0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,200;1,9..144,300;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #14110d;
+  --bg-2: #1a1612;
+  --bg-3: #221d17;
+  --bg-card: #18140f;
+  --fg: #e8dfc9;
+  --fg-2: #b8ad94;
+  --fg-3: #7d735f;
+  --fg-4: #4e4737;
+  --gold: #c9a961;
+  --gold-bright: #d9bb74;
+  --gold-deep: #9e8649;
+  --gold-soft: rgba(201, 169, 97, 0.12);
+  --line: rgba(232, 223, 201, 0.07);
+  --line-strong: rgba(232, 223, 201, 0.14);
+  --serif: "Fraunces", "Cormorant Garamond", Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "kern", "liga", "onum";
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Subtle paper-grain texture overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.45 0 0 0 0 0.35 0 0 0 0.06 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  opacity: 0.6;
+  z-index: 0;
+  mix-blend-mode: overlay;
+}
+
+/* Soft vignette */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(201, 169, 97, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 40% at 50% 100%, rgba(20, 17, 13, 0.5) 0%, transparent 50%);
+  z-index: 0;
+}
+
+.page { position: relative; z-index: 1; }
+
+::selection { background: var(--gold); color: var(--bg); }
+
+/* ============================================================
+   TOP BAR
+   ============================================================ */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 20px 32px;
+  background: rgba(20, 17, 13, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+.topbar .brand {
+  color: var(--gold);
+  font-weight: 500;
+  text-decoration: none;
+  letter-spacing: 0.24em;
+}
+.topbar .nav-right {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  color: var(--fg-3);
+}
+.topbar .nav-right a {
+  color: var(--fg-3);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.topbar .nav-right a:hover { color: var(--gold); }
+.topbar .sep { color: var(--fg-4); }
+
+/* ============================================================
+   HERO — main index
+   ============================================================ */
+.hero {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 120px 40px 80px;
+  position: relative;
+}
+
+/* The eyebrow with a thin gold rule */
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 56px;
+}
+.hero-eyebrow::before {
+  content: "";
+  width: 40px;
+  height: 1px;
+  background: var(--gold);
+}
+
+/* Refined hero title — single line treatment, italic emphasis inline */
+.hero h1 {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(48px, 8vw, 108px);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  margin: 0 0 32px;
+  color: var(--fg);
+  max-width: 14ch;
+}
+.hero h1 .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+
+.hero-sub {
+  font-family: var(--serif);
+  font-size: clamp(18px, 2vw, 22px);
+  line-height: 1.55;
+  color: var(--fg-2);
+  max-width: 580px;
+  margin: 0 0 64px;
+  font-weight: 400;
+}
+
+/* Stats — refined, single row, hairline rules */
+.hero-stats {
+  display: flex;
+  gap: 64px;
+  padding: 28px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  max-width: 600px;
+  flex-wrap: wrap;
+}
+.hero-stat-num {
+  font-family: var(--serif);
+  font-size: 42px;
+  font-weight: 300;
+  color: var(--gold);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-feature-settings: "lnum", "tnum";
+}
+.hero-stat-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg-3);
+  margin-top: 10px;
+}
+
+/* ============================================================
+   SECTION DIVIDER — thin refined rule with label
+   ============================================================ */
+.divider {
+  max-width: 1180px;
+  margin: 80px auto 0;
+  padding: 0 40px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 32px;
+  align-items: center;
+}
+.divider .label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.32em;
+  color: var(--gold);
+}
+.divider .label::before {
+  content: "§";
+  margin-right: 10px;
+  color: var(--fg-3);
+}
+.divider .line {
+  height: 1px;
+  background: linear-gradient(to right, var(--gold-deep) 0%, var(--line) 60%);
+}
+.divider .count {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-3);
+  letter-spacing: 0.18em;
+}
+
+/* ============================================================
+   TIER OVERVIEW — refined, all same gold, distinguished by typography
+   ============================================================ */
+.tiers {
+  max-width: 1180px;
+  margin: 32px auto 0;
+  padding: 0 40px;
+}
+.tiers-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.tier-block {
+  padding: 36px 28px;
+  border-right: 1px solid var(--line);
+  position: relative;
+}
+.tier-block:last-child { border-right: none; }
+
+.tier-roman {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 38px;
+  font-weight: 300;
+  color: var(--gold);
+  opacity: 0.7;
+  line-height: 1;
+  margin-bottom: 18px;
+  font-feature-settings: "lnum";
+}
+.tier-name {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.tier-vols {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--fg-3);
+  letter-spacing: 0.16em;
+  margin-bottom: 18px;
+}
+.tier-desc {
+  font-family: var(--serif);
+  font-size: 14px;
+  color: var(--fg-2);
+  line-height: 1.55;
+  font-style: italic;
+}
+
+/* ============================================================
+   BOOK LIST — refined, restrained, premium
+   ============================================================ */
+.books-section {
+  max-width: 1180px;
+  margin: 32px auto 0;
+  padding: 0 40px 100px;
+}
+
+.books-grid {
+  border-top: 1px solid var(--line);
+}
+
+.book {
+  display: grid;
+  grid-template-columns: 90px 1fr 160px;
+  gap: 40px;
+  align-items: center;
+  padding: 40px 12px;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+  transition: background 0.25s ease;
+}
+
+.book:hover {
+  background: linear-gradient(to right, var(--gold-soft), transparent 60%);
+}
+.book:hover .book-num { color: var(--gold); }
+.book:hover .book-arrow { color: var(--gold); gap: 14px; }
+
+.book-num {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 56px;
+  line-height: 1;
+  color: var(--fg-4);
+  letter-spacing: -0.02em;
+  font-feature-settings: "lnum", "tnum";
+  transition: color 0.25s ease;
+}
+
+.book-main { min-width: 0; }
+
+.book-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--fg-3);
+  flex-wrap: wrap;
+}
+.book-meta .tier-tag {
+  color: var(--gold);
+  font-weight: 600;
+}
+.book-meta .dot {
+  color: var(--fg-4);
+}
+
+.book-title {
+  font-family: var(--serif);
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  margin: 0 0 12px;
+  color: var(--fg);
+}
+.book-title .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+
+.book-tagline {
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--fg-2);
+  margin: 0;
+  max-width: 580px;
+  font-style: italic;
+}
+
+.book-side {
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--fg-3);
+}
+.book-side .topics-count {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 32px;
+  font-weight: 300;
+  color: var(--fg-2);
+  display: block;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.book-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  color: var(--fg-3);
+  transition: all 0.25s ease;
+}
+.book-arrow::after { content: "→"; }
+
+/* ============================================================
+   BOOK PAGE — individual handbook
+   ============================================================ */
+.book-hero {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 80px 40px 60px;
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+
+.back-link {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--fg-3);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 56px;
+  transition: all 0.2s ease;
+}
+.back-link::before { content: "←"; font-size: 13px; }
+.back-link:hover { color: var(--gold); gap: 16px; }
+
+.book-hero-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 60px;
+  align-items: flex-end;
+}
+
+.book-hero-meta {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 24px;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg-3);
+  flex-wrap: wrap;
+}
+.book-hero-meta .vol {
+  color: var(--gold);
+  font-weight: 600;
+}
+.book-hero-meta .dot { color: var(--fg-4); }
+
+.book-hero h1 {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(40px, 6vw, 76px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  margin: 0 0 24px;
+  color: var(--fg);
+}
+.book-hero h1 .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+
+.book-hero .tagline {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(17px, 1.8vw, 20px);
+  line-height: 1.55;
+  color: var(--fg-2);
+  max-width: 660px;
+  margin: 0;
+}
+
+/* Discreet large numeral on the side */
+.book-hero-num {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 200;
+  font-size: clamp(120px, 14vw, 180px);
+  line-height: 0.85;
+  color: var(--gold);
+  opacity: 0.12;
+  letter-spacing: -0.04em;
+  margin: 0;
+  user-select: none;
+  font-feature-settings: "lnum", "tnum";
+}
+
+/* ============================================================
+   TOPICS LIST
+   ============================================================ */
+.topics-section {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 60px 40px 40px;
+}
+
+.topics-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 32px;
+  align-items: center;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.topics-header .label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.32em;
+  color: var(--gold);
+}
+.topics-header .label::before {
+  content: "§";
+  margin-right: 10px;
+  color: var(--fg-3);
+}
+.topics-header .line {
+  height: 1px;
+  background: var(--line);
+}
+.topics-header .count {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-3);
+  letter-spacing: 0.18em;
+}
+
+.topic {
+  display: grid;
+  grid-template-columns: 80px 1fr 120px;
+  gap: 32px;
+  padding: 26px 12px;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+  color: inherit;
+  align-items: center;
+  transition: background 0.25s ease;
+}
+.topic:hover {
+  background: linear-gradient(to right, var(--gold-soft), transparent 70%);
+}
+.topic:hover .topic-num { color: var(--gold); }
+.topic:hover .topic-title { color: var(--gold-bright); }
+
+.topic-num {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 38px;
+  line-height: 1;
+  color: var(--fg-4);
+  letter-spacing: -0.02em;
+  font-feature-settings: "lnum", "tnum";
+  transition: color 0.25s ease;
+}
+
+.topic-title {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(18px, 2vw, 22px);
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+  margin: 0 0 6px;
+  color: var(--fg);
+  transition: color 0.25s ease;
+}
+
+.topic-desc {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--fg-2);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.topic-status {
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--fg-4);
+}
+.topic-status::after { content: "  →"; }
+
+/* ============================================================
+   PAGE NAVIGATION
+   ============================================================ */
+.page-nav {
+  max-width: 1180px;
+  margin: 60px auto 0;
+  padding: 32px 40px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.page-nav a, .page-nav .placeholder {
+  text-decoration: none;
+  color: inherit;
+  padding: 32px 28px;
+  border: 1px solid var(--line);
+  display: block;
+  transition: all 0.25s ease;
+}
+.page-nav a:first-child { border-right: none; }
+.page-nav a:hover {
+  background: var(--gold-soft);
+  border-color: var(--gold-deep);
+  position: relative;
+  z-index: 2;
+}
+
+.nav-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--fg-3);
+  margin-bottom: 14px;
+  display: block;
+}
+.nav-prev .nav-label::before { content: "← "; }
+.nav-next { text-align: right; }
+.nav-next .nav-label::after { content: " →"; }
+
+.nav-title {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: var(--fg);
+}
+.page-nav a:hover .nav-title { color: var(--gold); }
+.page-nav a:hover .nav-label { color: var(--gold); }
+
+.placeholder {
+  opacity: 0.3;
+  pointer-events: none;
+}
+.placeholder .nav-title {
+  color: var(--fg-4);
+  font-style: italic;
+  font-weight: 300;
+}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.footer {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 56px 40px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 24px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--fg-3);
+}
+
+.footer-mark {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--gold);
+  text-transform: none;
+  letter-spacing: 0;
+  text-align: center;
+}
+.footer .right { text-align: right; }
+.footer a {
+  color: var(--fg-3);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.footer a:hover { color: var(--gold); }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 1024px) {
+  .tiers-grid { grid-template-columns: repeat(2, 1fr); }
+  .tier-block:nth-child(2) { border-right: none; }
+  .tier-block:nth-child(1), .tier-block:nth-child(2) {
+    border-bottom: 1px solid var(--line);
+  }
+  .book {
+    grid-template-columns: 70px 1fr 120px;
+    gap: 28px;
+    padding: 36px 12px;
+  }
+  .book-num { font-size: 46px; }
+}
+
+@media (max-width: 720px) {
+  .topbar { padding: 16px 20px; font-size: 9px; letter-spacing: 0.18em; }
+  .topbar .nav-right { gap: 14px; }
+  .topbar .sep { display: none; }
+
+  .hero { padding: 64px 20px 56px; }
+  .hero h1 { max-width: none; }
+  .hero-stats { gap: 32px; padding: 24px 0; }
+  .hero-stat-num { font-size: 32px; }
+
+  .divider { padding: 0 20px; gap: 18px; }
+
+  .tiers { padding: 0 20px; }
+  .tiers-grid { grid-template-columns: 1fr; }
+  .tier-block {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    padding: 28px 18px;
+  }
+  .tier-block:last-child { border-bottom: none; }
+
+  .books-section { padding: 0 20px 64px; }
+  .book {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 32px 8px;
+  }
+  .book-num {
+    font-size: 40px;
+    color: var(--gold);
+    opacity: 0.6;
+  }
+  .book-side {
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+  .book-side .topics-count {
+    display: inline;
+    font-size: 22px;
+    margin-bottom: 0;
+    margin-right: 6px;
+  }
+  .book-arrow { margin-top: 0; }
+
+  .book-hero { padding: 48px 20px 40px; }
+  .back-link { margin-bottom: 36px; }
+  .book-hero-grid { grid-template-columns: 1fr; gap: 24px; position: relative; }
+  .book-hero-num {
+    position: absolute;
+    top: -12px;
+    right: 0;
+    font-size: 90px;
+    opacity: 0.08;
+    z-index: 0;
+  }
+  .book-hero-main { position: relative; z-index: 1; }
+
+  .topics-section { padding: 40px 20px 32px; }
+  .topics-header { gap: 14px; margin-bottom: 24px; padding-bottom: 16px; }
+  .topics-header .count { font-size: 9px; }
+  .topic {
+    grid-template-columns: 56px 1fr;
+    gap: 18px;
+    padding: 22px 4px;
+  }
+  .topic-num { font-size: 28px; }
+  .topic-status {
+    grid-column: 2;
+    text-align: left;
+    margin-top: 6px;
+  }
+
+  .page-nav {
+    padding: 28px 20px;
+    grid-template-columns: 1fr;
+  }
+  .page-nav a, .page-nav .placeholder { padding: 22px 20px; }
+  .page-nav a:first-child {
+    border-right: 1px solid var(--line);
+    border-bottom: none;
+  }
+  .nav-next { text-align: left; }
+  .nav-next .nav-label::after { content: " →"; }
+
+  .footer {
+    padding: 36px 20px;
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 14px;
+  }
+  .footer .right { text-align: center; }
+}
+
+/* ============================================================
+   TOPIC PAGE STYLES — extends premium V2 dark theme
+   ============================================================ */
+
+/* Container for prose content */
+.topic-page {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 0 40px 80px;
+}
+
+.topic-page-header {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 70px 40px 50px;
+  border-bottom: 1px solid var(--line);
+}
+
+.topic-crumbs {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg-3);
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+}
+.topic-crumbs a {
+  color: var(--fg-3);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.topic-crumbs a:hover { color: var(--gold); }
+.topic-crumbs .dot { color: var(--fg-4); }
+.topic-crumbs .current { color: var(--gold); }
+
+.topic-page-meta {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg-3);
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.topic-page-meta .topic-num-badge {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.topic-page-header h1 {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(36px, 5.5vw, 64px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin: 0 0 24px;
+  color: var(--fg);
+}
+.topic-page-header h1 .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+
+.topic-page-header .lede {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(17px, 2vw, 21px);
+  line-height: 1.55;
+  color: var(--fg-2);
+  max-width: 680px;
+  margin: 0;
+}
+
+/* ============================================================
+   PROSE CONTENT
+   ============================================================ */
+.prose {
+  padding-top: 56px;
+}
+
+.prose h2 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(26px, 3.5vw, 36px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 72px 0 24px;
+  color: var(--fg);
+  position: relative;
+}
+.prose h2:first-child { margin-top: 0; }
+.prose h2 .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+.prose h2::before {
+  content: "";
+  display: block;
+  width: 32px;
+  height: 1px;
+  background: var(--gold);
+  margin-bottom: 20px;
+  opacity: 0.6;
+}
+
+.prose h3 {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 22px;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  margin: 48px 0 18px;
+  color: var(--fg);
+}
+
+.prose h4 {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--gold);
+  margin: 36px 0 14px;
+  font-weight: 600;
+}
+
+.prose p {
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--fg);
+  margin: 0 0 22px;
+}
+
+.prose p em, .prose li em {
+  font-style: italic;
+  color: var(--gold);
+}
+
+.prose strong {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.prose ul, .prose ol {
+  margin: 0 0 28px;
+  padding-left: 24px;
+}
+
+.prose li {
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--fg);
+  margin-bottom: 10px;
+}
+.prose li::marker { color: var(--gold); }
+
+/* Inline code */
+.prose code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--bg-3);
+  color: var(--gold-bright);
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--line-strong);
+  letter-spacing: 0;
+}
+
+/* Drop cap on first paragraph of prose */
+.prose > p:first-of-type::first-letter {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-style: italic;
+  font-size: 4.5em;
+  float: left;
+  line-height: 0.85;
+  margin: 0.05em 0.12em 0 0;
+  color: var(--gold);
+}
+
+/* ============================================================
+   CODE BLOCKS
+   ============================================================ */
+.codeblock {
+  background: var(--bg-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  margin: 28px 0 32px;
+  overflow: hidden;
+  position: relative;
+}
+.codeblock-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-2);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--fg-3);
+}
+.codeblock-head .lang {
+  color: var(--gold);
+  font-weight: 600;
+}
+.codeblock-head .file {
+  color: var(--fg-3);
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 0.04em;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.codeblock pre {
+  margin: 0;
+  padding: 20px 22px;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  line-height: 1.65;
+  overflow-x: auto;
+  color: var(--fg);
+  white-space: pre;
+}
+.codeblock pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+/* Syntax highlighting */
+.tok-kw    { color: #d99a4e; font-weight: 500; }  /* keyword: amber */
+.tok-fn    { color: #c9a961; }                     /* function: gold */
+.tok-str   { color: #a8c98a; }                     /* string: muted green */
+.tok-num   { color: #d4a8a8; }                     /* number: dusty pink */
+.tok-type  { color: #8ab5c9; }                     /* type: muted blue */
+.tok-com   { color: #6b6253; font-style: italic; } /* comment: muted */
+.tok-pp    { color: #b88aa8; }                     /* preprocessor: mauve */
+.tok-reg   { color: #d4a874; font-weight: 500; }   /* register name */
+.tok-op    { color: #b8ad94; }                     /* operator */
+
+/* ============================================================
+   DIAGRAMS — ASCII art boxes
+   ============================================================ */
+.diagram {
+  background: var(--bg-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 24px;
+  margin: 28px 0 32px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-x: auto;
+  color: var(--fg);
+  white-space: pre;
+}
+.diagram-caption {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--fg-3);
+  text-align: center;
+  margin: -16px 0 32px;
+}
+
+/* SVG diagram container */
+.svg-diagram {
+  background: var(--bg-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 24px;
+  margin: 28px 0 12px;
+  text-align: center;
+  overflow-x: auto;
+}
+.svg-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ============================================================
+   CALLOUTS
+   ============================================================ */
+.callout {
+  border-left: 3px solid var(--gold);
+  background: var(--gold-soft);
+  padding: 20px 24px;
+  margin: 28px 0 32px;
+  border-radius: 0 4px 4px 0;
+}
+.callout-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: var(--gold);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.callout p {
+  margin-bottom: 10px;
+  color: var(--fg);
+  font-size: 16px;
+}
+.callout p:last-child { margin-bottom: 0; }
+.callout.warn {
+  border-left-color: #c97a5a;
+  background: rgba(201, 122, 90, 0.08);
+}
+.callout.warn .callout-label { color: #d99a7a; }
+
+.callout.key {
+  border-left-color: var(--gold-bright);
+  background: rgba(217, 187, 116, 0.06);
+}
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+.table-wrap {
+  margin: 28px 0 32px;
+  overflow-x: auto;
+}
+.prose-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.prose-table th, .prose-table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  color: var(--fg);
+}
+.prose-table th {
+  background: var(--bg-3);
+  color: var(--gold);
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  border-bottom: 1px solid var(--line-strong);
+}
+.prose-table tr:hover td {
+  background: var(--gold-soft);
+}
+
+/* ============================================================
+   INTERVIEW Q&A
+   ============================================================ */
+.qa-section {
+  margin-top: 64px;
+  padding-top: 48px;
+  border-top: 1px solid var(--line);
+}
+.qa-section-head {
+  margin-bottom: 32px;
+}
+.qa-section-head .label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: var(--gold);
+  margin-bottom: 12px;
+}
+.qa-section-head .label::before {
+  content: "§ ";
+  color: var(--fg-3);
+}
+.qa-section-head h2 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(28px, 4vw, 38px);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  margin: 0;
+  color: var(--fg);
+}
+.qa-section-head h2 .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+.qa-section-head h2::before { display: none; }
+
+.qa {
+  border-bottom: 1px solid var(--line);
+  padding: 24px 0;
+}
+.qa:last-child { border-bottom: none; }
+
+.qa-q {
+  display: flex;
+  gap: 18px;
+  align-items: baseline;
+  margin-bottom: 14px;
+}
+.qa-num {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--gold);
+  line-height: 1;
+  flex-shrink: 0;
+}
+.qa-question {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 1.4;
+  color: var(--fg);
+  letter-spacing: -0.01em;
+}
+.qa-answer {
+  margin-left: 40px;
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--fg-2);
+}
+.qa-answer p {
+  margin: 0 0 14px;
+  color: var(--fg-2);
+}
+.qa-answer p:last-child { margin-bottom: 0; }
+.qa-answer code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--bg-3);
+  color: var(--gold-bright);
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+.qa-answer strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+/* ============================================================
+   TOPIC NAV (prev / next topic)
+   ============================================================ */
+.topic-nav {
+  max-width: 820px;
+  margin: 60px auto 0;
+  padding: 32px 40px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.topic-nav a, .topic-nav .placeholder {
+  text-decoration: none;
+  color: inherit;
+  padding: 24px 22px;
+  border: 1px solid var(--line);
+  display: block;
+  transition: all 0.25s ease;
+}
+.topic-nav a:first-child { border-right: none; }
+.topic-nav a:hover {
+  background: var(--gold-soft);
+  border-color: var(--gold-deep);
+  z-index: 2;
+  position: relative;
+}
+.topic-nav .nav-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--fg-3);
+  margin-bottom: 10px;
+  display: block;
+}
+.topic-nav .nav-prev .nav-label::before { content: "← "; }
+.topic-nav .nav-next { text-align: right; }
+.topic-nav .nav-next .nav-label::after { content: " →"; }
+.topic-nav .nav-title {
+  font-family: var(--serif);
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--fg);
+}
+.topic-nav a:hover .nav-title { color: var(--gold); }
+.topic-nav a:hover .nav-label { color: var(--gold); }
+.topic-nav .placeholder {
+  opacity: 0.3;
+  pointer-events: none;
+}
+.topic-nav .placeholder .nav-title {
+  color: var(--fg-4);
+  font-style: italic;
+  font-weight: 300;
+}
+
+/* ============================================================
+   MOBILE RESPONSIVE for topic pages
+   ============================================================ */
+@media (max-width: 720px) {
+  .topic-page-header { padding: 40px 20px 32px; }
+  .topic-page { padding: 0 20px 56px; }
+  .topic-crumbs { margin-bottom: 24px; gap: 8px; font-size: 8px; }
+  .prose { padding-top: 36px; }
+  .prose h2 { margin: 48px 0 18px; }
+  .prose h3 { margin: 32px 0 14px; }
+  .prose p, .prose li { font-size: 16px; }
+  .prose > p:first-of-type::first-letter { font-size: 3.5em; }
+  .codeblock pre { font-size: 12px; padding: 16px 18px; }
+  .diagram { font-size: 11px; padding: 18px; }
+  .callout { padding: 16px 18px; margin: 22px 0; }
+  .qa-answer { margin-left: 0; }
+  .qa-question { font-size: 17px; }
+  .qa-answer { font-size: 15px; }
+  .topic-nav { padding: 24px 20px; grid-template-columns: 1fr; }
+  .topic-nav a, .topic-nav .placeholder { padding: 18px 18px; }
+  .topic-nav a:first-child {
+    border-right: 1px solid var(--line);
+    border-bottom: none;
+  }
+  .topic-nav .nav-next { text-align: left; }
+  .topic-nav .nav-next .nav-label::after { content: " →"; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="topbar">
+  <a href="../index.html" class="brand">Embedded Systems Mastery</a>
+  <span class="nav-right">
+    <a href="HB2.html">HB2 Index</a>
+    <span class="sep">·</span>
+    <span>Topic 05</span>
+  </span>
+</div>
+
+<header class="topic-page-header">
+  <div class="topic-crumbs">
+    <a href="../index.html">Series</a>
+    <span class="dot">·</span>
+    <a href="HB2.html">HB2</a>
+    <span class="dot">·</span>
+    <span class="current">Topic 05</span>
+  </div>
+  <div class="topic-page-meta">
+    <span class="topic-num-badge">Topic 05</span>
+    <span>·</span>
+    <span>HB2 · ARM Architecture &amp; MCU Internals</span>
+  </div>
+  <h1>Cache Hierarchy, MMU &amp; <span class='em'>TLB</span></h1>
+  <p class="lede">When firmware runs faster on M7 than M4 by 5× instead of the expected 3×, that's the cache earning its keep. When DMA buffers corrupt themselves silently, that's the cache breaking your code.</p>
+</header>
+
+<article class="topic-page">
+  <div class="prose">
+
+<p>Most Cortex-M cores don't have a cache. The M0, M0+, M3, M4, M23, and M33 all access memory directly — flash on the I-bus, SRAM on the S-bus, peripherals on the system bus. What you write goes where you wrote it, immediately. Predictable, deterministic, and easy to reason about.</p>
+
+<p>Then the Cortex-M7 arrived with optional I-cache and D-cache, the M55 added it for vector loads, and the M85 brought a properly tuned cache hierarchy. Suddenly firmware that worked perfectly on Cortex-M4 was corrupting DMA buffers on Cortex-M7 in ways that depended on optimization level. This topic explains why — and how to write code that survives the transition.</p>
+
+<p>It also covers the MMU and TLB, which exist on Cortex-A cores, but are absent from every M-profile core. Understanding the difference matters when you eventually move firmware from a microcontroller to a Linux-class system on a chip.</p>
+
+<h2>The <span class="em">cache</span> — what it is, what it costs</h2>
+
+<p>A cache is a small, fast memory that sits between the CPU and main memory. When the CPU reads an address, the cache checks first; if the data is there (a <em>hit</em>), it's returned in 1–2 cycles. If not (a <em>miss</em>), the cache fetches the full <em>cache line</em> from main memory — typically 32 bytes — and stores it locally for next time.</p>
+
+<div class="diagram">     Without Cache                   With Cache (M7 layout)
+
+     ┌────────┐                       ┌────────┐
+     │  CPU   │                       │  CPU   │
+     └────┬───┘                       └────┬───┘
+          │ direct bus                     │ AXI
+          │ access                         ▼
+          │                          ┌────────────┐
+          │                          │  I-cache   │  16-64 KB
+          │                          │  + D-cache │  4-way set
+          │                          └─────┬──────┘  assoc
+          ▼                                ▼
+     ┌────────┐                       ┌────────┐
+     │  FLASH │                       │  FLASH │
+     │  SRAM  │                       │  SRAM  │
+     │  PERIPH│                       │  PERIPH│
+     └────────┘                       └────────┘
+
+     Every access hits              Hot data hits cache (1-2 cyc)
+     real memory (wait              Cold data misses → fill from
+     states matter).                memory (10-100+ cyc).</div>
+
+<h3>Why caches break DMA</h3>
+
+<p>Imagine a typical DMA receive scenario. You allocate a buffer in SRAM, tell the DMA controller to write incoming UART bytes into it, and then read the buffer from your code. On a Cortex-M4 this works perfectly. On a Cortex-M7 with the cache enabled, your code reads <em>stale data</em> from the cache because:</p>
+
+<ol>
+<li>You read the buffer earlier, and the cache helpfully grabbed those (then-empty) bytes into a cache line.</li>
+<li>DMA wrote new data directly into SRAM, bypassing the cache.</li>
+<li>You read the buffer again — the cache hits and returns the old, empty bytes. The new data is sitting in SRAM, invisible.</li>
+</ol>
+
+<div class="callout warn">
+<div class="callout-label">Classic Bug</div>
+<p>The symptom is unmistakeable: code that worked on STM32F4 (M4) silently corrupts on STM32H7 (M7). The data is in SRAM, you can see it in the debugger memory window, but your C code reads zeros. The fix is one of: place DMA buffers in DTCM (outside the cache), mark the buffer's memory region non-cacheable via MPU, or call <code>SCB_InvalidateDCache_by_Addr()</code> before reading.</p>
+</div>
+
+<h3>Cache coherency — three approaches</h3>
+
+<p>There are three correct ways to handle DMA on a cached system:</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">dma_cache_safe.c</span></div>
+<pre><code><span class="tok-pp">#include</span> <span class="tok-str">"core_cm7.h"</span>     <span class="tok-com">/* CMSIS for cache intrinsics */</span>
+
+<span class="tok-com">/* APPROACH 1: place buffer in DTCM.
+ * DTCM is single-cycle SRAM outside the cache.
+ * Linker script must define a section pointing into DTCM. */</span>
+<span class="tok-kw">static</span> <span class="tok-type">uint8_t</span> rx_buf[<span class="tok-num">256</span>] <span class="tok-fn">__attribute__</span>((<span class="tok-fn">section</span>(<span class="tok-str">".dtcm_bss"</span>)));
+
+<span class="tok-com">/* APPROACH 2: mark the buffer region non-cacheable via MPU.
+ * Set up an MPU region covering the buffer, attributes = Normal
+ * non-cacheable. Costs an MPU slot but makes the buffer behave
+ * like a non-cached chip without code changes. */</span>
+
+<span class="tok-com">/* APPROACH 3: explicit cache maintenance around DMA. */</span>
+<span class="tok-type">uint8_t</span> dma_buf[<span class="tok-num">256</span>] <span class="tok-fn">__attribute__</span>((<span class="tok-fn">aligned</span>(<span class="tok-num">32</span>)));
+
+<span class="tok-kw">void</span> <span class="tok-fn">dma_receive</span>(<span class="tok-kw">void</span>)
+{
+    <span class="tok-com">/* Before DMA writes our buffer, drop any cached lines.
+     * DMA's writes go straight to SRAM; we want the CPU's
+     * next read to come from SRAM, not from the cache. */</span>
+    <span class="tok-fn">SCB_InvalidateDCache_by_Addr</span>((<span class="tok-type">uint32_t</span> *)dma_buf, <span class="tok-kw">sizeof</span>(dma_buf));
+
+    <span class="tok-fn">start_dma_into</span>(dma_buf, <span class="tok-kw">sizeof</span>(dma_buf));
+    <span class="tok-fn">wait_for_dma_complete</span>();
+
+    <span class="tok-com">/* Now we can safely read dma_buf — cache lines were
+     * invalidated, so reads will fetch fresh data. */</span>
+}
+
+<span class="tok-kw">void</span> <span class="tok-fn">dma_transmit</span>(<span class="tok-kw">const</span> <span class="tok-type">uint8_t</span> *src, <span class="tok-type">size_t</span> n)
+{
+    <span class="tok-com">/* Before DMA reads our data, flush the cache to SRAM.
+     * Without this, DMA may read stale data because our
+     * writes are sitting in the cache, not yet in SRAM. */</span>
+    <span class="tok-fn">SCB_CleanDCache_by_Addr</span>((<span class="tok-type">uint32_t</span> *)src, n);
+
+    <span class="tok-fn">start_dma_out</span>(src, n);
+}</code></pre>
+</div>
+
+<div class="callout key">
+<div class="callout-label">Key Idea</div>
+<p>Cache maintenance on Cortex-M7 has three operations: <strong>invalidate</strong> (mark cache lines as no-longer-valid, next read misses to memory), <strong>clean</strong> (write any dirty lines back to memory), and <strong>clean &amp; invalidate</strong> (both together). For a DMA receive use <em>invalidate before DMA</em>. For a DMA transmit use <em>clean before DMA</em>. These are unambiguous rules — get them wrong and the bug will reproduce only sometimes, only with optimization, only on Tuesdays.</p>
+</div>
+
+<h2>Cache organization — <span class="em">sets, ways, lines</span></h2>
+
+<p>Cortex-M7 caches are organized as <em>set-associative</em>: every memory address maps to one of several sets, and each set can hold a few cache lines (the "ways"). When a new line needs to come in, the cache picks a line in the same set to evict — usually the least recently used.</p>
+
+<div class="diagram">       Typical Cortex-M7 D-Cache  (16 KB, 4-way, 32-byte lines)
+
+       128 sets × 4 ways × 32 bytes = 16 KB
+
+       Address:  ┌──────────┬─────────┬─────────┐
+                 │   Tag    │  Index  │ Offset  │
+                 │  (high)  │ (7 bits)│ (5 bits)│
+                 └──────────┴─────────┴─────────┘
+                     ▼          ▼         ▼
+                  matches    selects    selects
+                  one of     one of     byte within
+                  4 ways     128 sets   the 32-byte line
+
+       Set 0:  ┌─────┬─────┬─────┬─────┐
+               │ W0  │ W1  │ W2  │ W3  │  ← 4 ways
+               └─────┴─────┴─────┴─────┘
+       Set 1:  ┌─────┬─────┬─────┬─────┐
+               │ W0  │ W1  │ W2  │ W3  │
+               └─────┴─────┴─────┴─────┘
+               ...
+       Set 127: ┌─────┬─────┬─────┬─────┐
+                │ W0  │ W1  │ W2  │ W3  │
+                └─────┴─────┴─────┴─────┘</div>
+
+<p>The implication: addresses that share the same index bits compete for the same set. If your hot loop reads from five different arrays whose addresses all happen to land in the same set, you'll thrash that set repeatedly — the cache effectively behaves as if it were a tiny 4-line buffer. This is called a <em>conflict miss</em>, and it's rare but spectacular when it bites.</p>
+
+<h2>Write policies — <span class="em">write-back versus write-through</span></h2>
+
+<p>When the CPU writes data to a cached address, the cache has two options:</p>
+
+<ul>
+<li><strong>Write-back</strong> — Update only the cache line, mark it "dirty", and write to main memory later (when the line is evicted). Fast, but the data isn't in main memory until eviction or an explicit clean.</li>
+<li><strong>Write-through</strong> — Update the cache <em>and</em> main memory simultaneously. Slower writes, but memory is always coherent.</li>
+</ul>
+
+<p>Cortex-M7's D-cache supports both, configured per memory region via the MPU. Default is write-back for most regions. DMA-touched regions are commonly set to write-through or non-cacheable to avoid the coherency dance.</p>
+
+<h2>The <span class="em">MMU</span> — present on Cortex-A, absent on Cortex-M</h2>
+
+<p>A Memory Management Unit translates virtual addresses (what software sees) into physical addresses (what the bus sees). It enables virtual memory, per-process address spaces, copy-on-write, memory-mapped files, and demand paging — all the features Linux relies on.</p>
+
+<div class="diagram">       MMU translation pipeline (Cortex-A)
+
+  ┌──────────┐    virtual addr   ┌─────────┐  physical addr  ┌──────────┐
+  │   CPU    │ ─────────────────►│   MMU   │ ───────────────►│   Bus    │
+  └──────────┘                   │ (+ TLB) │                 └──────────┘
+                                 └─────────┘
+                                      │
+                                      ▼
+                              Walks the page tables
+                              in DRAM if no TLB hit.</div>
+
+<p>The MMU uses <em>page tables</em> stored in main memory. Each page table entry maps a virtual page (typically 4 KB) to a physical page, plus permission bits (readable, writable, executable, user/supervisor). When the CPU accesses a virtual address, the MMU walks the page table to find the translation — but page-table walks are slow, so most translations are cached in the TLB.</p>
+
+<h3>The TLB — fast translation cache</h3>
+
+<p>The <strong>Translation Lookaside Buffer</strong> is a small associative cache of recent virtual-to-physical translations. A TLB lookup is one cycle. A TLB miss costs a page-table walk — typically 5–20 cycles plus any cache misses along the walk.</p>
+
+<p>This is why context switches in operating systems are expensive: switching processes usually means switching page tables, which invalidates the TLB, which means every memory access during the next several hundred instructions misses the TLB and pays the walk penalty.</p>
+
+<h2>Why <span class="em">M-profile has no MMU</span></h2>
+
+<p>The M-profile design philosophy is deterministic real-time response, low power, and small silicon. An MMU breaks all three:</p>
+
+<ul>
+<li><strong>Determinism.</strong> A memory access whose latency depends on TLB hit or miss is non-deterministic. Hard real-time code cannot tolerate this.</li>
+<li><strong>Power.</strong> Page-table walks burn cycles and memory bandwidth. For a battery-powered sensor that sleeps most of the time, an MMU is pure overhead.</li>
+<li><strong>Silicon.</strong> A useful MMU with a multi-entry TLB takes meaningful die area. M-profile aims for tiny.</li>
+</ul>
+
+<p>What M-profile offers instead is the <strong>MPU</strong> — Memory Protection Unit — covered in detail in Topic 06. The MPU divides physical memory into a few regions (typically 8 or 16) and assigns access rules to each. No translation, just permissions. Deterministic, cheap, and sufficient for an RTOS to isolate tasks from each other without an MMU's overhead.</p>
+
+<h2>Cache architecture <span class="em">summary table</span></h2>
+
+<div class="table-wrap">
+<table class="prose-table">
+<thead>
+<tr><th>Core</th><th>I-cache</th><th>D-cache</th><th>MMU</th><th>MPU</th><th>Comment</th></tr>
+</thead>
+<tbody>
+<tr><td>M0 / M0+</td><td>—</td><td>—</td><td>—</td><td>opt</td><td>No cache, deterministic</td></tr>
+<tr><td>M3 / M4</td><td>—</td><td>—</td><td>—</td><td>opt</td><td>Flash accelerator only</td></tr>
+<tr><td>M7</td><td>opt 4–64 KB</td><td>opt 4–64 KB</td><td>—</td><td>opt</td><td>Cache + ITCM/DTCM</td></tr>
+<tr><td>M23 / M33</td><td>—</td><td>—</td><td>—</td><td>opt</td><td>No cache</td></tr>
+<tr><td>M52 / M55</td><td>opt 4–32 KB</td><td>opt 4–32 KB</td><td>—</td><td>opt</td><td>Cache + Helium</td></tr>
+<tr><td>M85</td><td>opt 16–64 KB</td><td>opt 16–64 KB</td><td>—</td><td>opt</td><td>Largest M-cache</td></tr>
+<tr><td>Cortex-A53</td><td>32 KB L1 + L2</td><td>32 KB L1 + L2</td><td>✓</td><td>—</td><td>Full virtual memory</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Test code — <span class="em">cache effect measurement</span></h2>
+
+<p>This experiment shows the cache earning its keep. We allocate a buffer, then read it twice — the first read warms the cache, the second hits it. The cycle counts should differ dramatically on a cached core, and be identical on a non-cached core.</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">cache_effect.c</span></div>
+<pre><code><span class="tok-pp">#include</span> <span class="tok-str">&lt;stdint.h&gt;</span>
+<span class="tok-pp">#include</span> <span class="tok-str">&lt;stdio.h&gt;</span>
+<span class="tok-pp">#include</span> <span class="tok-str">"core_cm7.h"</span>
+
+<span class="tok-pp">#define</span> <span class="tok-reg">N</span>       <span class="tok-num">4096</span>
+<span class="tok-kw">static</span> <span class="tok-type">uint32_t</span> data[<span class="tok-reg">N</span>] <span class="tok-fn">__attribute__</span>((<span class="tok-fn">aligned</span>(<span class="tok-num">32</span>)));
+
+<span class="tok-kw">static</span> <span class="tok-type">uint32_t</span> <span class="tok-fn">sum_buffer</span>(<span class="tok-kw">const</span> <span class="tok-type">uint32_t</span> *p, <span class="tok-type">size_t</span> n)
+{
+    <span class="tok-type">uint32_t</span> s = <span class="tok-num">0</span>;
+    <span class="tok-kw">for</span> (<span class="tok-type">size_t</span> i = <span class="tok-num">0</span>; i &lt; n; i++) s += p[i];
+    <span class="tok-kw">return</span> s;
+}
+
+<span class="tok-kw">void</span> <span class="tok-fn">cache_demo</span>(<span class="tok-kw">void</span>)
+{
+    <span class="tok-com">/* Fill the buffer with arbitrary data */</span>
+    <span class="tok-kw">for</span> (<span class="tok-type">int</span> i = <span class="tok-num">0</span>; i &lt; <span class="tok-reg">N</span>; i++) data[i] = i;
+
+    <span class="tok-com">/* Drop all D-cache lines so we start cold */</span>
+    <span class="tok-fn">SCB_InvalidateDCache</span>();
+
+    <span class="tok-type">uint32_t</span> t0 = <span class="tok-reg">DWT_CYCCNT</span>;
+    <span class="tok-fn">sum_buffer</span>(data, <span class="tok-reg">N</span>);              <span class="tok-com">/* COLD: misses cache */</span>
+    <span class="tok-type">uint32_t</span> t1 = <span class="tok-reg">DWT_CYCCNT</span>;
+
+    <span class="tok-fn">sum_buffer</span>(data, <span class="tok-reg">N</span>);              <span class="tok-com">/* WARM: hits cache */</span>
+    <span class="tok-type">uint32_t</span> t2 = <span class="tok-reg">DWT_CYCCNT</span>;
+
+    <span class="tok-fn">printf</span>(<span class="tok-str">"Cold pass (cache miss): %lu cycles\n"</span>, t1 - t0);
+    <span class="tok-fn">printf</span>(<span class="tok-str">"Warm pass (cache hit) : %lu cycles\n"</span>, t2 - t1);
+    <span class="tok-fn">printf</span>(<span class="tok-str">"Speedup               : %.2fx\n"</span>,
+           (<span class="tok-type">float</span>)(t1 - t0) / (<span class="tok-type">float</span>)(t2 - t1));
+}</code></pre>
+</div>
+
+<p>Typical output on a Cortex-M7 with D-cache enabled, sumimg 16 KB of data:</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">Console</span><span class="file">SWO output</span></div>
+<pre><code>Cold pass (cache miss): 12450 cycles
+Warm pass (cache hit) :  4180 cycles
+Speedup               : 2.98x</code></pre>
+</div>
+
+<p>The same code on a Cortex-M4 (no cache) would show identical cycle counts for both passes — every access pays the same SRAM latency. That single number — same vs different — tells you instantly whether your cache is working.</p>
+
+<div class="qa-section">
+<div class="qa-section-head">
+  <div class="label">Interview Questions</div>
+  <h2>Interview Q &amp; A — <span class="em">Cache &amp; MMU</span></h2>
+</div>
+
+<div class="qa">
+  <div class="qa-q">
+    <span class="qa-num">Q1.</span>
+    <span class="qa-question">Why does code that works on a Cortex-M4 sometimes corrupt DMA buffers on a Cortex-M7?</span>
+  </div>
+  <div class="qa-answer">
+    <p>Because the M7 has a D-cache and the M4 doesn't, and DMA bypasses the cache.</p>
+    <p>The typical failure: code reads a buffer (cache pulls in the line as zeros), then DMA writes new data into the same SRAM addresses (cache is now out of date), then code reads the buffer again and the cache happily returns the stale zeros it already has. The new data is in SRAM but the CPU never sees it.</p>
+    <p>Three fixes: (1) place the buffer in DTCM, which is outside the cache; (2) configure the MPU to mark the buffer region non-cacheable; (3) call <code>SCB_InvalidateDCache_by_Addr()</code> before reading. For DMA transmits, call <code>SCB_CleanDCache_by_Addr()</code> before starting the DMA so dirty cache lines reach SRAM first.</p>
+  </div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">
+    <span class="qa-num">Q2.</span>
+    <span class="qa-question">What is the difference between invalidate, clean, and clean &amp; invalidate cache operations?</span>
+  </div>
+  <div class="qa-answer">
+    <p><strong>Invalidate</strong> marks cache lines as no-longer-valid. The next CPU read at those addresses misses the cache and fetches from memory. Used before a DMA receive — drops any stale lines so the next read sees the DMA's fresh data.</p>
+    <p><strong>Clean</strong> writes dirty cache lines back to memory but leaves them valid in the cache. Used before a DMA transmit — ensures the buffer in memory is up to date so DMA reads correct data.</p>
+    <p><strong>Clean and invalidate</strong> does both: writes back any dirty data, then drops the lines from the cache. Used at the end of a memory region's lifetime, or when memory is going to be reused for a different purpose.</p>
+  </div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">
+    <span class="qa-num">Q3.</span>
+    <span class="qa-question">What's the difference between write-back and write-through caching?</span>
+  </div>
+  <div class="qa-answer">
+    <p><strong>Write-back</strong> updates only the cache line on a write; the dirty line is written to memory only when it's evicted (or when explicit clean is requested). This is faster — most writes never touch main memory — but the cache and memory can be temporarily inconsistent. This is the default on Cortex-M7.</p>
+    <p><strong>Write-through</strong> updates the cache and main memory on every write. Slower for writes, but memory is always coherent with the cache. Useful for memory regions that are also read by DMA or by another bus master — write-through plus invalidate-before-DMA-receive is a clean pattern.</p>
+    <p>The policy is configured per memory region via the MPU on Cortex-M7. Different regions of the address space can use different policies.</p>
+  </div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">
+    <span class="qa-num">Q4.</span>
+    <span class="qa-question">What is a TLB, and why does it matter on a Cortex-A system?</span>
+  </div>
+  <div class="qa-answer">
+    <p>The <strong>Translation Lookaside Buffer</strong> is a small associative cache of virtual-to-physical address translations. Without it, every memory access would require the MMU to walk the page tables — multiple memory reads — before the actual access could happen.</p>
+    <p>With a TLB, common translations are cached, so the typical memory access is one extra cycle for the TLB lookup. TLB misses are expensive: typically 5–20 cycles for a page-table walk plus any cache misses along the way.</p>
+    <p>Why it matters: TLB performance dominates the cost of context switches in an OS. When the kernel switches processes, the TLB is invalidated, so the new process suffers a flurry of TLB misses for its first several hundred instructions. This is the main reason why kernels try to minimize context switches and why "userspace networking" frameworks bypass kernel boundaries entirely.</p>
+  </div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">
+    <span class="qa-num">Q5.</span>
+    <span class="qa-question">Why does the Cortex-M profile have no MMU?</span>
+  </div>
+  <div class="qa-answer">
+    <p>Three deliberate reasons: <strong>determinism, power, and silicon area</strong>.</p>
+    <p>An MMU introduces non-deterministic memory access latency — every load and store depends on TLB state. Hard real-time code (interrupt handlers in motor controllers, audio inner loops, automotive ECUs) cannot tolerate variable timing. M-profile guarantees a memory access takes a known number of cycles, every time.</p>
+    <p>An MMU consumes power even when idle (the TLB has state to maintain) and burns cycles on every page-table walk. A battery sensor that sleeps 99% of the time cannot afford this overhead.</p>
+    <p>An MMU with a useful TLB takes significant die area. M-profile targets tiny silicon — 32 cents per chip in volume. The MPU provides the security and isolation that an RTOS actually needs, in a much smaller package.</p>
+  </div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">
+    <span class="qa-num">Q6.</span>
+    <span class="qa-question">When porting firmware from Cortex-M4 to Cortex-M7, what should you audit first?</span>
+  </div>
+  <div class="qa-answer">
+    <p>In rough order of how often each is the source of bugs:</p>
+    <p><strong>One: any code that touches DMA.</strong> Every DMA buffer needs cache awareness — either placed in DTCM, marked non-cacheable in the MPU, or wrapped with explicit clean/invalidate calls. This is the single most common porting failure.</p>
+    <p><strong>Two: linker script and section placement.</strong> The M7 typically has DTCM and ITCM regions that the M4 didn't. Decide what goes in them — hot ISRs in ITCM, DMA buffers in DTCM is a good start. The linker script needs to define these regions.</p>
+    <p><strong>Three: alignment.</strong> Cache lines on M7 are 32 bytes. Buffers that get DMA'd should be 32-byte aligned and their lengths should ideally be multiples of 32. Otherwise the cache maintenance operations may affect adjacent unrelated data.</p>
+    <p><strong>Four: timing assumptions.</strong> Tight loops that ran at predictable speeds on M4 may now run faster (cache hits) or slower (cache misses) on M7. Anything that depended on cycle-accurate timing through software loops needs review — most should be using timers anyway.</p>
+    <p><strong>Five: stack size.</strong> The M7 stacks more state on exception entry if FPU is in use. Bump task stack sizes by at least 100 bytes when porting, then reduce after measuring.</p>
+  </div>
+</div>
+
+</div>
+
+  </div>
+</article>
+
+<nav class="topic-nav">
+  <a href="HB2-T04.html" class="nav-prev">
+    <span class="nav-label">Previous · Topic 04</span>
+    <div class="nav-title">Pipeline, Branch Prediction & Counters</div>
+  </a>
+  <a href="HB2-T06.html" class="nav-next">
+    <span class="nav-label">Next · Topic 06</span>
+    <div class="nav-title">MPU Configuration & Memory Protection</div>
+  </a>
+</nav>
+
+<footer class="footer">
+  <span>HB2 · Topic 05</span>
+  <span class="footer-mark">§</span>
+  <span class="right"><a href="HB2.html">Back to HB2 Index</a></span>
+</footer>
+
+</div>
+</body>
+</html>

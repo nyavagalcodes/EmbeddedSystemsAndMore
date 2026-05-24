@@ -1,0 +1,2294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HB2 · ARM Architecture &amp; MCU Internals — Embedded Systems Mastery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,200;0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,200;1,9..144,300;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #14110d;
+  --bg-2: #1a1612;
+  --bg-3: #221d17;
+  --bg-card: #18140f;
+  --bg-code: #0e0c08;
+  --fg: #e8dfc9;
+  --fg-2: #b8ad94;
+  --fg-3: #7d735f;
+  --fg-4: #4e4737;
+  --gold: #c9a961;
+  --gold-bright: #d9bb74;
+  --gold-deep: #9e8649;
+  --gold-soft: rgba(201, 169, 97, 0.12);
+  --rust: #c87454;
+  --teal: #6db89f;
+  --line: rgba(232, 223, 201, 0.07);
+  --line-strong: rgba(232, 223, 201, 0.14);
+  --serif: "Fraunces", Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "kern", "liga", "onum";
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.45 0 0 0 0 0.35 0 0 0 0.06 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  opacity: 0.6;
+  z-index: 0;
+  mix-blend-mode: overlay;
+}
+
+.page { position: relative; z-index: 1; }
+
+::selection { background: var(--gold); color: var(--bg); }
+
+/* Top bar */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  padding: 18px 32px;
+  background: rgba(20, 17, 13, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+.topbar .brand {
+  color: var(--gold); font-weight: 500;
+  text-decoration: none; letter-spacing: 0.24em;
+}
+.topbar .nav-right {
+  display: flex; gap: 22px; align-items: center; color: var(--fg-3);
+}
+.topbar .nav-right a { color: var(--fg-3); text-decoration: none; }
+.topbar .nav-right a:hover { color: var(--gold); }
+.topbar .sep { color: var(--fg-4); }
+
+/* Book hero */
+.book-hero {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 64px 40px 48px;
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+.back-link {
+  font-family: var(--mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.26em;
+  color: var(--fg-3); text-decoration: none;
+  display: inline-flex; align-items: center; gap: 12px;
+  margin-bottom: 40px; transition: all 0.2s ease;
+}
+.back-link::before { content: "←"; font-size: 13px; }
+.back-link:hover { color: var(--gold); gap: 16px; }
+
+.book-hero-grid {
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 60px; align-items: flex-end;
+}
+.book-hero-meta {
+  display: flex; gap: 14px; align-items: center;
+  margin-bottom: 22px;
+  font-family: var(--mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.24em;
+  color: var(--fg-3); flex-wrap: wrap;
+}
+.book-hero-meta .vol { color: var(--gold); font-weight: 600; }
+.book-hero-meta .dot { color: var(--fg-4); }
+.book-hero h1 {
+  font-family: var(--serif); font-weight: 300;
+  font-size: clamp(38px, 5.5vw, 64px);
+  line-height: 1.02; letter-spacing: -0.03em;
+  margin: 0 0 20px; color: var(--fg);
+}
+.book-hero h1 .em {
+  font-style: italic; color: var(--gold); font-weight: 300;
+}
+.book-hero .tagline {
+  font-family: var(--serif); font-style: italic;
+  font-size: clamp(16px, 1.7vw, 19px);
+  line-height: 1.55; color: var(--fg-2);
+  max-width: 640px; margin: 0;
+}
+.book-hero-num {
+  font-family: var(--serif); font-style: italic;
+  font-weight: 200;
+  font-size: clamp(110px, 12vw, 160px);
+  line-height: 0.85;
+  color: var(--gold); opacity: 0.12;
+  letter-spacing: -0.04em;
+  margin: 0; user-select: none;
+  font-feature-settings: "lnum", "tnum";
+}
+
+/* TOC section */
+.toc-section { max-width: 1180px; margin: 0 auto; padding: 56px 40px 32px; }
+.toc-header {
+  display: grid; grid-template-columns: auto 1fr auto;
+  gap: 28px; align-items: center;
+  margin-bottom: 28px; padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.toc-header .label {
+  font-family: var(--mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.32em;
+  color: var(--gold);
+}
+.toc-header .label::before {
+  content: "§"; margin-right: 10px; color: var(--fg-3);
+}
+.toc-header .line { height: 1px; background: var(--line); }
+.toc-header .count {
+  font-family: var(--mono); font-size: 10px;
+  color: var(--fg-3); letter-spacing: 0.18em;
+}
+
+.topic-entry {
+  display: grid; grid-template-columns: 80px 1fr 120px;
+  gap: 32px; padding: 22px 12px;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none; color: inherit;
+  align-items: center;
+  transition: background 0.25s ease;
+}
+.topic-entry:hover {
+  background: linear-gradient(to right, var(--gold-soft), transparent 70%);
+}
+.topic-entry:hover .topic-num { color: var(--gold); }
+.topic-entry:hover .topic-title { color: var(--gold-bright); }
+
+.topic-num {
+  font-family: var(--serif); font-style: italic;
+  font-weight: 300; font-size: 36px; line-height: 1;
+  color: var(--fg-4); letter-spacing: -0.02em;
+  transition: color 0.25s ease;
+}
+.topic-title {
+  font-family: var(--serif); font-weight: 500;
+  font-size: clamp(17px, 1.9vw, 21px);
+  letter-spacing: -0.015em; line-height: 1.3;
+  margin: 0 0 5px; color: var(--fg);
+  transition: color 0.25s ease;
+}
+.topic-summary {
+  font-family: var(--serif); font-style: italic;
+  font-size: 14px; color: var(--fg-2);
+  line-height: 1.55; margin: 0;
+}
+.topic-badge {
+  text-align: right;
+  font-family: var(--mono); font-size: 9px;
+  text-transform: uppercase; letter-spacing: 0.22em;
+  color: var(--gold);
+  font-weight: 600;
+}
+.topic-badge.pending { color: var(--fg-4); font-weight: 400; }
+.topic-badge.ready::after { content: "  →"; }
+
+/* ============================================================
+   ARTICLE CONTENT — the deep topic pages
+   ============================================================ */
+.article {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 80px 40px 60px;
+  scroll-margin-top: 80px;
+}
+
+.article-meta {
+  display: flex; gap: 14px; align-items: center;
+  margin-bottom: 20px;
+  font-family: var(--mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.24em;
+  color: var(--fg-3); flex-wrap: wrap;
+}
+.article-meta .topic-id { color: var(--gold); font-weight: 600; }
+.article-meta .dot { color: var(--fg-4); }
+
+.article h2 {
+  font-family: var(--serif); font-weight: 300;
+  font-size: clamp(34px, 4.5vw, 52px);
+  line-height: 1.05; letter-spacing: -0.025em;
+  margin: 0 0 24px; color: var(--fg);
+}
+.article h2 .em {
+  font-style: italic; color: var(--gold); font-weight: 300;
+}
+
+.article .lede {
+  font-family: var(--serif); font-style: italic;
+  font-size: 19px; line-height: 1.55;
+  color: var(--fg-2);
+  margin: 0 0 48px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--line);
+}
+
+.article h3 {
+  font-family: var(--serif); font-weight: 500;
+  font-size: 26px; line-height: 1.2;
+  letter-spacing: -0.015em;
+  margin: 56px 0 20px;
+  color: var(--gold);
+}
+.article h3::before {
+  content: "§ ";
+  color: var(--fg-4);
+  font-weight: 300;
+}
+
+.article h4 {
+  font-family: var(--serif); font-weight: 600;
+  font-size: 19px; line-height: 1.3;
+  margin: 36px 0 14px;
+  color: var(--fg);
+  letter-spacing: -0.01em;
+}
+
+.article p {
+  font-family: var(--serif);
+  font-size: 17px; line-height: 1.7;
+  color: var(--fg);
+  margin: 0 0 20px;
+}
+
+.article p strong, .article li strong {
+  color: var(--gold-bright);
+  font-weight: 600;
+}
+
+.article p em, .article li em {
+  font-style: italic;
+  color: var(--fg);
+}
+
+.article a {
+  color: var(--gold);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--gold-deep);
+}
+
+.article ul, .article ol {
+  margin: 0 0 24px;
+  padding-left: 24px;
+}
+.article li {
+  font-family: var(--serif);
+  font-size: 17px; line-height: 1.7;
+  color: var(--fg);
+  margin: 0 0 10px;
+}
+.article ul li::marker { color: var(--gold); }
+.article ol li::marker { color: var(--gold); font-style: italic; }
+
+/* Inline code */
+.article code {
+  font-family: var(--mono);
+  font-size: 0.86em;
+  background: var(--bg-3);
+  color: var(--gold-bright);
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+}
+
+/* Code block */
+.codeblock {
+  margin: 28px 0;
+  background: var(--bg-code);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.codeblock-head {
+  padding: 10px 18px;
+  background: var(--bg-3);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--fg-3);
+}
+.codeblock-head .lang { color: var(--gold); font-weight: 600; }
+.codeblock-head .file { font-style: italic; }
+.codeblock pre {
+  margin: 0;
+  padding: 20px 22px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--fg);
+  -webkit-font-smoothing: auto;
+}
+.codeblock pre .c { color: var(--fg-3); font-style: italic; }
+.codeblock pre .k { color: var(--gold); font-weight: 500; }
+.codeblock pre .s { color: var(--teal); }
+.codeblock pre .n { color: var(--rust); }
+.codeblock pre .t { color: var(--gold-bright); }
+.codeblock pre .p { color: var(--fg-2); }
+
+/* Diagram block (ASCII art) */
+.diagram {
+  margin: 28px 0;
+  background: var(--bg-code);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.diagram-head {
+  padding: 10px 18px;
+  background: var(--bg-3);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--gold);
+}
+.diagram-head::before { content: "▸ "; color: var(--fg-3); }
+.diagram pre {
+  margin: 0;
+  padding: 22px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fg-2);
+  -webkit-font-smoothing: auto;
+}
+.diagram pre .hi { color: var(--gold); font-weight: 600; }
+.diagram pre .em { color: var(--rust); }
+
+/* Callouts */
+.callout {
+  margin: 28px 0;
+  padding: 18px 22px;
+  border-left: 3px solid var(--gold);
+  background: var(--gold-soft);
+  border-radius: 0 4px 4px 0;
+}
+.callout-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--gold);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.callout p:last-child { margin-bottom: 0; }
+.callout.warn { border-color: var(--rust); background: rgba(200, 116, 84, 0.08); }
+.callout.warn .callout-label { color: var(--rust); }
+.callout.key { border-color: var(--teal); background: rgba(109, 184, 159, 0.08); }
+.callout.key .callout-label { color: var(--teal); }
+
+/* Table */
+.table-wrap {
+  margin: 28px 0;
+  overflow-x: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14.5px;
+}
+thead {
+  background: var(--bg-3);
+}
+th {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--gold);
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line-strong);
+  font-weight: 600;
+}
+td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--serif);
+  color: var(--fg);
+  vertical-align: top;
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: var(--gold-soft); }
+td code { font-size: 13px; }
+
+/* Interview Q&A */
+.qa {
+  margin: 24px 0;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 24px 26px;
+}
+.qa-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--gold);
+  margin-bottom: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.qa-label::before {
+  content: "Q";
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 20px;
+  font-weight: 300;
+  color: var(--gold);
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.qa-question {
+  font-family: var(--serif);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--fg);
+  margin: 0 0 18px;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+}
+.qa-answer {
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+.qa-answer-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--teal);
+  margin-bottom: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.qa-answer-label::before {
+  content: "A";
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 20px;
+  font-weight: 300;
+  color: var(--teal);
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.qa-answer p {
+  font-size: 16px;
+  line-height: 1.65;
+  margin-bottom: 12px;
+}
+.qa-answer p:last-child { margin-bottom: 0; }
+.qa-answer code { font-size: 13px; }
+
+/* Section divider between topics */
+.topic-divider {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+.topic-divider hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--gold-deep) 50%, transparent);
+  margin: 32px 0;
+}
+
+/* Topic header (when scrolled-to) */
+.topic-anchor {
+  scroll-margin-top: 80px;
+}
+
+/* Top-of-topic banner */
+.topic-banner {
+  max-width: 760px;
+  margin: 0 auto 0;
+  padding: 0 40px;
+}
+.topic-banner-inner {
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+  padding: 48px 0 32px;
+  border-bottom: 1px solid var(--line);
+}
+.topic-banner-num {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 200;
+  font-size: 96px;
+  color: var(--gold);
+  opacity: 0.7;
+  line-height: 0.85;
+  letter-spacing: -0.04em;
+}
+.topic-banner-meta {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg-3);
+  margin-bottom: 4px;
+}
+.topic-banner-meta .id { color: var(--gold); font-weight: 600; }
+
+/* Back-to-top floating */
+.scroll-top {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 44px; height: 44px;
+  background: var(--bg-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  color: var(--gold);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-family: var(--serif);
+  font-size: 20px;
+  z-index: 50;
+  transition: all 0.2s ease;
+}
+.scroll-top.visible { display: flex; }
+.scroll-top:hover { background: var(--gold-soft); border-color: var(--gold); }
+
+/* Page nav */
+.page-nav {
+  max-width: 1180px;
+  margin: 60px auto 0;
+  padding: 32px 40px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.page-nav a {
+  text-decoration: none; color: inherit;
+  padding: 32px 28px;
+  border: 1px solid var(--line);
+  display: block;
+  transition: all 0.25s ease;
+}
+.page-nav a:first-child { border-right: none; }
+.page-nav a:hover {
+  background: var(--gold-soft);
+  border-color: var(--gold-deep);
+}
+.nav-label {
+  font-family: var(--mono); font-size: 9px;
+  text-transform: uppercase; letter-spacing: 0.26em;
+  color: var(--fg-3); margin-bottom: 14px; display: block;
+}
+.nav-prev .nav-label::before { content: "← "; }
+.nav-next { text-align: right; }
+.nav-next .nav-label::after { content: " →"; }
+.nav-title {
+  font-family: var(--serif); font-size: 20px;
+  font-weight: 400; line-height: 1.25;
+  letter-spacing: -0.015em; color: var(--fg);
+}
+.page-nav a:hover .nav-title { color: var(--gold); }
+.page-nav a:hover .nav-label { color: var(--gold); }
+
+/* Footer */
+.footer {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 56px 40px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 24px;
+  align-items: center;
+  font-family: var(--mono); font-size: 9px;
+  text-transform: uppercase; letter-spacing: 0.26em;
+  color: var(--fg-3);
+}
+.footer-mark {
+  font-family: var(--serif); font-style: italic;
+  font-size: 22px; font-weight: 300; color: var(--gold);
+  text-transform: none; letter-spacing: 0; text-align: center;
+}
+.footer .right { text-align: right; }
+.footer a { color: var(--fg-3); text-decoration: none; }
+.footer a:hover { color: var(--gold); }
+
+/* Responsive */
+@media (max-width: 720px) {
+  .topbar { padding: 14px 18px; font-size: 9px; letter-spacing: 0.18em; }
+  .topbar .nav-right { gap: 14px; }
+  .topbar .sep { display: none; }
+  .book-hero { padding: 40px 18px 32px; }
+  .back-link { margin-bottom: 28px; }
+  .book-hero-grid { grid-template-columns: 1fr; gap: 20px; position: relative; }
+  .book-hero-num {
+    position: absolute; top: -10px; right: 0;
+    font-size: 80px; opacity: 0.08;
+  }
+  .toc-section { padding: 36px 18px 24px; }
+  .toc-header { gap: 14px; }
+  .topic-entry {
+    grid-template-columns: 48px 1fr;
+    gap: 16px; padding: 18px 4px;
+  }
+  .topic-num { font-size: 28px; }
+  .topic-badge {
+    grid-column: 2; text-align: left; margin-top: 6px;
+  }
+  .article { padding: 48px 18px 32px; }
+  .article h2 { font-size: 28px; }
+  .article h3 { font-size: 22px; margin: 40px 0 16px; }
+  .article h4 { font-size: 17px; }
+  .article .lede { font-size: 17px; margin-bottom: 32px; padding-bottom: 24px; }
+  .topic-banner { padding: 0 18px; }
+  .topic-banner-inner { padding: 32px 0 20px; gap: 16px; }
+  .topic-banner-num { font-size: 64px; }
+  .qa { padding: 18px 18px; }
+  .qa-question { font-size: 16px; }
+  .codeblock pre, .diagram pre { font-size: 12px; padding: 16px; }
+  .table-wrap { font-size: 13px; }
+  th, td { padding: 10px 12px; font-size: 13px; }
+  .scroll-top { bottom: 18px; right: 18px; width: 40px; height: 40px; }
+  .page-nav {
+    padding: 24px 18px; grid-template-columns: 1fr;
+  }
+  .page-nav a { padding: 22px 18px; }
+  .page-nav a:first-child {
+    border-right: 1px solid var(--line);
+    border-bottom: none;
+  }
+  .nav-next { text-align: left; }
+  .footer {
+    padding: 36px 18px; grid-template-columns: 1fr;
+    text-align: center; gap: 12px;
+  }
+  .footer .right { text-align: center; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="topbar">
+  <a href="index.html" class="brand">Embedded Systems Mastery</a>
+  <span class="nav-right">
+    <a href="index.html">All Volumes</a>
+    <span class="sep">·</span>
+    <span>HB2</span>
+  </span>
+</div>
+
+<header class="book-hero">
+  <a href="index.html" class="back-link">Back to all volumes</a>
+  <div class="book-hero-grid">
+    <div>
+      <div class="book-hero-meta">
+        <span class="vol">Handbook 02</span>
+        <span class="dot">·</span>
+        <span>Foundation</span>
+        <span class="dot">·</span>
+        <span>Processor</span>
+      </div>
+      <h1>ARM Architecture <span class="em">&amp; MCU</span> Internals</h1>
+      <p class="tagline">Cortex-M and Cortex-A processor internals, memory model, exception handling, boot sequence, clock tree and low-power design.</p>
+    </div>
+    <div class="book-hero-num">02</div>
+  </div>
+</header>
+
+<section class="toc-section">
+  <div class="toc-header">
+    <span class="label">Table of Contents</span>
+    <span class="line"></span>
+    <span class="count">12 Topics · 5 Ready</span>
+  </div>
+  <div class="topics">
+    <a href="HB2-T01.html" class="topic-entry">
+      <div class="topic-num">01</div>
+      <div>
+        <div class="topic-title">Processor Architectures Overview</div>
+        <div class="topic-summary">Cortex-M0, M3, M4, M7, M33 family, Cortex-A class, instruction sets and feature differences.</div>
+      </div>
+      <div class="topic-badge ready">Read →</div>
+    </a>
+    <a href="HB2-T02.html" class="topic-entry">
+      <div class="topic-num">02</div>
+      <div>
+        <div class="topic-title">Programmer's Model & Register File</div>
+        <div class="topic-summary">R0-R15, xPSR, special registers, modes, privilege levels and the AAPCS calling convention.</div>
+      </div>
+      <div class="topic-badge ready">Read →</div>
+    </a>
+    <a href="HB2-T03.html" class="topic-entry">
+      <div class="topic-num">03</div>
+      <div>
+        <div class="topic-title">Memory Map, Bus Matrix & AHB / APB</div>
+        <div class="topic-summary">4GB address space, peripheral domains, bit-banding and bus arbitration.</div>
+      </div>
+      <div class="topic-badge ready">Read →</div>
+    </a>
+    <a href="HB2-T04.html" class="topic-entry">
+      <div class="topic-num">04</div>
+      <div>
+        <div class="topic-title">Pipeline, Branch Prediction & Counters</div>
+        <div class="topic-summary">Pipeline stages, branch handling, DWT cycle counter and performance instrumentation.</div>
+      </div>
+      <div class="topic-badge ready">Read →</div>
+    </a>
+    <a href="HB2-T05.html" class="topic-entry">
+      <div class="topic-num">05</div>
+      <div>
+        <div class="topic-title">Cache Hierarchy, MMU & TLB</div>
+        <div class="topic-summary">I-cache, D-cache, write-back vs write-through, MMU tables, TLB management on Cortex-A.</div>
+      </div>
+      <div class="topic-badge ready">Read →</div>
+    </a>
+    <a href="#" class="topic-entry">
+      <div class="topic-num">06</div>
+      <div>
+        <div class="topic-title">MPU Configuration & Memory Protection</div>
+        <div class="topic-summary">Region setup, access attributes, sub-regions, MPU use cases on Cortex-M.</div>
+      </div>
+      <div class="topic-badge pending">Pending</div>
+    </a>
+    <a href="#" class="topic-entry">
+      <div class="topic-num">07</div>
+      <div>
+        <div class="topic-title">Exception Model, NVIC & Interrupts</div>
+        <div class="topic-summary">Vector table, priority grouping, tail-chaining, late arrival and exception entry and exit.</div>
+      </div>
+      <div class="topic-badge pending">Pending</div>
+    </a>
+    <a href="#" class="topic-entry">
+      <div class="topic-num">08</div>
+      <div>
+        <div class="topic-title">Reset, Boot ROM & Startup Sequence</div>
+        <div class="topic-summary">Power-on reset, vector fetch, Reset_Handler, .data and .bss init, SystemInit.</div>
+      </div>
+      <div class="topic-badge pending">Pending</div>
+    </a>
+    <a href="#" class="topic-entry">
+      <div class="topic-num">09</div>
+      <div>
+        <div class="topic-title">Clock Tree, PLL & Power Domains</div>
+        <div class="topic-summary">HSI, HSE, PLL configuration, bus clocks, flash wait states and clock gating.</div>
+      </div>
+      <div class="topic-badge pending">Pending</div>
+    </a>
+    <a href="#" class="topic-entry">
+      <div class="topic-num">10</div>
+      <div>
+        <div class="topic-title">Low-Power Modes & Wake Sources</div>
+        <div class="topic-summary">Sleep, stop, standby modes, wake-up latency, RTC wake and power profiling.</div>
+      </div>
+      <div class="topic-badge pending">Pending</div>
+    </a>
+    <a href="#" class="topic-entry">
+      <div class="topic-num">11</div>
+      <div>
+        <div class="topic-title">ARM Assembly & Calling Conventions</div>
+        <div class="topic-summary">Thumb-2 essentials, AAPCS, inline assembly, reading compiler-generated output.</div>
+      </div>
+      <div class="topic-badge pending">Pending</div>
+    </a>
+    <a href="#" class="topic-entry">
+      <div class="topic-num">12</div>
+      <div>
+        <div class="topic-title">TrustZone-M & Security Extensions</div>
+        <div class="topic-summary">Secure and non-secure worlds, SAU and IDAU, secure gateway, NS-callable functions.</div>
+      </div>
+      <div class="topic-badge pending">Pending</div>
+    </a>
+  </div>
+</section>
+
+
+<section id="topic-01" class="topic-anchor">
+  <div class="topic-banner">
+    <div class="topic-banner-inner">
+      <div class="topic-banner-num">01</div>
+      <div>
+        <div class="topic-banner-meta"><span class="id">Topic 01</span> · Foundation</div>
+      </div>
+    </div>
+  </div>
+
+  <article class="article">
+    <div class="article-meta">
+      <span class="topic-id">Handbook 02</span>
+      <span class="dot">·</span>
+      <span>Topic 01</span>
+      <span class="dot">·</span>
+      <span>Foundation</span>
+    </div>
+    <h2>Processor <span class="em">Architectures</span> Overview</h2>
+    <p class="lede">Before you write a single register access, you need to know which Cortex you're talking to. The M-class and A-class lines descend from a common ARM ancestry but they solve fundamentally different problems — and the firmware that runs on each looks nothing alike.</p>
+    
+<h3>The ARM family at a glance</h3>
+
+<p>ARM is not one processor. It is a sprawling family of architectures licensed to silicon vendors who integrate ARM cores into their own chips. For embedded engineers, three product lines matter:</p>
+
+<ul>
+<li><strong>Cortex-M</strong> — the microcontroller line. Tiny, deterministic, deeply integrated peripherals. Runs bare metal or a real-time operating system. This is where 90% of embedded firmware lives.</li>
+<li><strong>Cortex-A</strong> — the applications processor line. Runs Linux, Android, full operating systems. Has an MMU, caches, multiple cores. Powers your phone and your Raspberry Pi.</li>
+<li><strong>Cortex-R</strong> — the real-time line. Sits between M and A. Used in storage controllers, automotive ECUs, baseband modems. Most embedded engineers never touch one.</li>
+</ul>
+
+<p>Inside Cortex-M there are several distinct cores, and the differences matter for what you can do with them.</p>
+
+<h3>The Cortex-M family compared</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Core</th><th>ISA</th><th>Pipeline</th><th>MPU</th><th>FPU</th><th>DSP</th><th>Typical use</th></tr></thead>
+<tbody>
+<tr><td><strong>Cortex-M0 / M0+</strong></td><td>Thumb subset (ARMv6-M)</td><td>3-stage</td><td>Optional</td><td>No</td><td>No</td><td>Sensors, low-cost MCUs, simple control loops</td></tr>
+<tr><td><strong>Cortex-M3</strong></td><td>Thumb-2 (ARMv7-M)</td><td>3-stage</td><td>Yes</td><td>No</td><td>No</td><td>General-purpose MCUs (STM32F1, LPC17xx)</td></tr>
+<tr><td><strong>Cortex-M4</strong></td><td>Thumb-2 + DSP</td><td>3-stage</td><td>Yes</td><td>Optional (single-precision)</td><td>Yes</td><td>Motor control, audio, DSP-heavy work</td></tr>
+<tr><td><strong>Cortex-M7</strong></td><td>Thumb-2 + DSP</td><td>6-stage superscalar</td><td>Yes</td><td>Double-precision</td><td>Yes</td><td>High-performance MCUs (STM32H7, i.MX RT)</td></tr>
+<tr><td><strong>Cortex-M33</strong></td><td>Thumb-2 (ARMv8-M)</td><td>3-stage</td><td>Yes</td><td>Optional</td><td>Optional</td><td>Secure IoT — TrustZone-M built in</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>A few things to internalize from that table:</p>
+
+<ul>
+<li><strong>All Cortex-M cores execute Thumb-2 instructions</strong> (M0/M0+ run a subset). You will never write ARM 32-bit instructions for a Cortex-M. The 16-bit Thumb encoding with selected 32-bit instructions is what lives in flash.</li>
+<li><strong>The MPU is optional on M0+ and standard on M3 and up.</strong> If your firmware needs memory protection — process isolation, stack overflow detection — check the part number, not just the core family.</li>
+<li><strong>The FPU is optional even on M4 and M33.</strong> Silicon vendors decide whether to include it. STM32F407 has one, STM32F410 does not. Read the datasheet before you assume hardware float.</li>
+<li><strong>Cortex-M7 is superscalar.</strong> It can dispatch two instructions per cycle under the right conditions. This is why M7 chips post much higher CoreMark scores than M4 chips at the same MHz.</li>
+</ul>
+
+<h3>What Cortex-M shares</h3>
+
+<p>Every Cortex-M, from the M0 in a $0.20 sensor MCU to the M7 in a $20 industrial controller, shares an architectural backbone. Knowing that backbone gives you transferable skills across silicon vendors.</p>
+
+<div class="diagram">
+<div class="diagram-head">Common Cortex-M architecture</div>
+<pre>
+    ┌──────────────────────────────────────────────────┐
+    │                                                  │
+    │   ┌────────────┐         ┌────────────────┐      │
+    │   │            │         │                │      │
+    │   │  Cortex-M  │◀───────▶│   NVIC (IRQs)  │      │
+    │   │   Core     │         │                │      │
+    │   │            │         └────────────────┘      │
+    │   └────┬───────┘                                 │
+    │        │                                         │
+    │        │ Harvard buses  (separate I and D)       │
+    │        ▼                                         │
+    │   ┌─────────────────────────────────────┐        │
+    │   │           Bus Matrix                │        │
+    │   └──┬──────────┬───────────┬───────────┘        │
+    │      │          │           │                    │
+    │      ▼          ▼           ▼                    │
+    │   ┌─────┐    ┌─────┐    ┌────────────────┐       │
+    │   │Flash│    │SRAM │    │ APB Peripherals│       │
+    │   └─────┘    └─────┘    │ (UART, I2C ...)│       │
+    │                         └────────────────┘       │
+    │                                                  │
+    │   <span class="hi">Memory map is fixed by architecture</span>            │
+    │   <span class="hi">NVIC, SysTick, MPU live at 0xE0000000</span>          │
+    └──────────────────────────────────────────────────┘
+</pre>
+</div>
+
+<p>The fixed memory map is one of the cleverest decisions ARM made. Every Cortex-M, regardless of vendor, places the NVIC, SysTick, MPU, and SCB at the same addresses inside the Private Peripheral Bus region. That means CMSIS — the Cortex Microcontroller Software Interface Standard — works identically across all vendors. The code below is portable from STM32 to Nordic to NXP to TI without changes:</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">enable_systick.c</span></div>
+<pre><span class="c">/* Enable SysTick to fire every 1 ms at 100 MHz CPU clock */</span>
+<span class="c">/* This code runs unchanged on any Cortex-M from any vendor */</span>
+
+<span class="k">#include</span> <span class="s">"core_cm4.h"</span>  <span class="c">/* CMSIS header, vendor-independent */</span>
+
+<span class="t">void</span> <span class="n">systick_init</span><span class="p">(</span><span class="t">void</span><span class="p">) {</span>
+    SysTick<span class="p">-&gt;</span>LOAD <span class="p">=</span> <span class="s">100000</span> <span class="p">-</span> <span class="s">1</span><span class="p">;</span>           <span class="c">/* 100 MHz / 1 kHz */</span>
+    SysTick<span class="p">-&gt;</span>VAL  <span class="p">=</span> <span class="s">0</span><span class="p">;</span>
+    SysTick<span class="p">-&gt;</span>CTRL <span class="p">=</span> SysTick_CTRL_CLKSOURCE_Msk
+                  <span class="p">|</span>  SysTick_CTRL_TICKINT_Msk
+                  <span class="p">|</span>  SysTick_CTRL_ENABLE_Msk<span class="p">;</span>
+<span class="p">}</span>
+</pre>
+</div>
+
+<h3>Cortex-A — a different beast</h3>
+
+<p>Where Cortex-M is built for determinism and tight integration, Cortex-A is built for throughput and full-OS workloads. The differences cascade through every layer of the firmware stack.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Aspect</th><th>Cortex-M</th><th>Cortex-A</th></tr></thead>
+<tbody>
+<tr><td>Memory protection</td><td>MPU (region-based)</td><td>MMU (page tables, virtual memory)</td></tr>
+<tr><td>Caches</td><td>Optional, simple</td><td>Always, L1+L2 minimum</td></tr>
+<tr><td>Exception model</td><td>NVIC, vectored, on-chip stack</td><td>GIC, banked SP per mode</td></tr>
+<tr><td>Boot</td><td>Vector table at flash base</td><td>Multi-stage from ROM → BL1 → BL2 → kernel</td></tr>
+<tr><td>Typical OS</td><td>Bare metal or RTOS (FreeRTOS, Zephyr)</td><td>Linux, Android, QNX</td></tr>
+<tr><td>RAM</td><td>KB to a few MB on-chip SRAM</td><td>GB of external DDR</td></tr>
+<tr><td>Boot time</td><td>Milliseconds</td><td>Seconds</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout key">
+<div class="callout-label">Key Idea</div>
+<p>An MMU translates virtual addresses to physical ones using page tables. An MPU only enforces access rules on physical regions. The MMU makes Linux possible; the MPU makes RTOS safety possible. Different problems, different solutions.</p>
+</div>
+
+<h3>How to identify what core you're on</h3>
+
+<p>The CPUID register in the System Control Block tells you exactly what you're running on. Useful for portable firmware that needs to know whether the FPU exists or the DSP extension is present.</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">identify_core.c</span></div>
+<pre><span class="k">#include</span> <span class="s">&lt;stdio.h&gt;</span>
+<span class="k">#include</span> <span class="s">"core_cm4.h"</span>
+
+<span class="t">void</span> <span class="n">identify_core</span><span class="p">(</span><span class="t">void</span><span class="p">) {</span>
+    <span class="t">uint32_t</span> cpuid <span class="p">=</span> SCB<span class="p">-&gt;</span>CPUID<span class="p">;</span>
+
+    <span class="t">uint8_t</span>  implementer <span class="p">=</span> <span class="p">(</span>cpuid <span class="p">&gt;&gt;</span> <span class="s">24</span><span class="p">) &amp;</span> <span class="s">0xFF</span><span class="p">;</span>
+    <span class="t">uint8_t</span>  variant     <span class="p">=</span> <span class="p">(</span>cpuid <span class="p">&gt;&gt;</span> <span class="s">20</span><span class="p">) &amp;</span> <span class="s">0x0F</span><span class="p">;</span>
+    <span class="t">uint16_t</span> partno      <span class="p">=</span> <span class="p">(</span>cpuid <span class="p">&gt;&gt;</span> <span class="s">4</span><span class="p">)  &amp;</span> <span class="s">0xFFF</span><span class="p">;</span>
+    <span class="t">uint8_t</span>  revision    <span class="p">=</span>  cpuid        <span class="p">&amp;</span> <span class="s">0x0F</span><span class="p">;</span>
+
+    <span class="c">/* implementer 0x41 = 'A' = ARM Limited                  */</span>
+    <span class="c">/* partno 0xC20 = M0, 0xC23 = M3, 0xC24 = M4, 0xC27 = M7 */</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"Core part: 0xC%X  rev: r%dp%d\n"</span><span class="p">,</span>
+            partno<span class="p">,</span> variant<span class="p">,</span> revision<span class="p">);</span>
+
+    <span class="c">/* Check whether the FPU exists by reading CPACR  */</span>
+    <span class="t">uint32_t</span> cpacr <span class="p">=</span> SCB<span class="p">-&gt;</span>CPACR<span class="p">;</span>
+    <span class="k">if</span> <span class="p">((</span>cpacr <span class="p">&gt;&gt;</span> <span class="s">20</span><span class="p">) &amp;</span> <span class="s">0xF</span><span class="p">)</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">"FPU is present and enabled\n"</span><span class="p">);</span>
+<span class="p">}</span>
+</pre>
+</div>
+
+<h3>Interview Questions</h3>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">What is the difference between Cortex-M and Cortex-A, and when would you choose one over the other?</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p><strong>Cortex-M is built for deterministic real-time control.</strong> It has an MPU (not an MMU), no virtual memory, on-chip flash and SRAM, a vectored interrupt controller (NVIC) with single-cycle entry, and is designed to run bare metal or a small RTOS. Boot time is microseconds. Power consumption is microamps in sleep.</p>
+<p><strong>Cortex-A is built for throughput and full operating systems.</strong> It has an MMU with page tables, L1 and L2 caches, a generic interrupt controller (GIC), runs out of external DDR RAM, and expects to boot Linux or Android. Boot time is seconds. Power consumption is hundreds of milliwatts even idle.</p>
+<p>Choose Cortex-M when you need: hard real-time deadlines, low power, low cost, fast boot, deterministic interrupt latency. Choose Cortex-A when you need: a full OS, networking stacks, complex UI, multi-process isolation, gigabytes of memory, file systems.</p>
+</div>
+</div>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">Why does ARM use Thumb-2 instead of full 32-bit ARM instructions on Cortex-M?</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p>Code density. Thumb-2 mixes 16-bit and 32-bit instructions, so common operations encode in 16 bits and you get roughly <strong>30% smaller code</strong> than equivalent ARM-32 code. On a microcontroller with 64 KB or 128 KB of flash, that's massive — you fit more functionality per byte.</p>
+<p>Cortex-M cores execute Thumb-2 exclusively. There's no ARM-32 state to switch into. This simplifies the silicon (no instruction set state bit to track) and saves power.</p>
+<p>The trade-off — slightly fewer registers usable in 16-bit form, some encoding restrictions — doesn't matter for typical MCU workloads, which are dominated by load/store/branch and rarely benefit from the wider encoding.</p>
+</div>
+</div>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">An interviewer asks: "I have a part labeled STM32F407. Tell me everything you can infer about the core."</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p>The "F4" series from STMicro uses <strong>Cortex-M4 with FPU</strong> (the "07" suffix in STM32 indicates higher-end variants with FPU; F401 also has FPU but F410 has the FPU as well — you have to read the datasheet, but F407 definitely has it).</p>
+<p>From the Cortex-M4 designation we can infer:</p>
+<ul>
+<li>Thumb-2 instruction set with DSP extensions (SIMD on 16-bit halves of 32-bit registers — useful for audio and motor control)</li>
+<li>3-stage pipeline, in-order execution</li>
+<li>MPU is present (standard on M3 and up)</li>
+<li>Single-precision FPU (IEEE 754 float, not double)</li>
+<li>Memory map follows the standard Cortex-M layout — NVIC at 0xE000E100, SysTick at 0xE000E010</li>
+<li>Maximum 240 external interrupts via NVIC (vendor-specific count; F407 implements 82)</li>
+<li>Bit-banding regions at 0x22000000 and 0x42000000 for atomic single-bit access</li>
+</ul>
+<p>For full specs — clock speed (168 MHz on F407), flash size, RAM, peripheral set — you still need the STM32F407 datasheet. But the core capabilities come from the Cortex-M4 architecture reference manual.</p>
+</div>
+</div>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">What does it mean for Cortex-M7 to be "superscalar"? Why does it matter?</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p>Superscalar means the core can <strong>dispatch and execute more than one instruction per clock cycle</strong>. Cortex-M7 has dual-issue capability with a 6-stage pipeline. Under the right conditions — independent instructions, no register conflicts, predictable branches — it can sustain close to 2 instructions per cycle.</p>
+<p>This is why an M7 at 400 MHz typically benchmarks at 2.5x to 3x the performance of an M4 at the same clock. The CoreMark score for Cortex-M7 is around 5.0 per MHz versus 3.4 for M4 — that's the superscalar effect.</p>
+<p>It matters for high-throughput firmware: image processing, real-time audio, complex control algorithms, USB high-speed packet handling. It does <em>not</em> matter for simple control loops, where you're memory-bound or peripheral-bound anyway.</p>
+<p>Note that the additional pipeline depth (6 stages vs 3 on M4) means a slightly higher interrupt latency — typically 12 cycles on M7 vs 12 on M4 due to architecture optimizations, but worst-case can be higher. For hard real-time work, this is worth measuring.</p>
+</div>
+</div>
+
+  </article>
+</section>
+
+<div class="topic-divider"><hr></div>
+
+
+<section id="topic-02" class="topic-anchor">
+  <div class="topic-banner">
+    <div class="topic-banner-inner">
+      <div class="topic-banner-num">02</div>
+      <div>
+        <div class="topic-banner-meta"><span class="id">Topic 02</span> · Foundation</div>
+      </div>
+    </div>
+  </div>
+
+  <article class="article">
+    <div class="article-meta">
+      <span class="topic-id">Handbook 02</span>
+      <span class="dot">·</span>
+      <span>Topic 02</span>
+      <span class="dot">·</span>
+      <span>Foundation</span>
+    </div>
+    <h2>Programmer's Model & <span class="em">Register File</span></h2>
+    <p class="lede">Sixteen 32-bit registers. Three special registers. A handful of rules from the AAPCS. That's the whole programmer's model — and once you internalize it, reading compiler output and writing inline assembly becomes natural.</p>
+    
+<h3>The general-purpose register file</h3>
+
+<p>Cortex-M exposes sixteen 32-bit registers, named R0 through R15. The compiler treats some as freely usable and others as having special purposes. Knowing which is which is the difference between writing assembly that works and writing assembly that corrupts the stack.</p>
+
+<div class="diagram">
+<div class="diagram-head">Cortex-M register file</div>
+<pre>
+        ┌───────────────────────────────────────────────┐
+        │  General-purpose, 32-bit each                 │
+        ├───────────────────────────────────────────────┤
+        │  <span class="hi">R0 – R3</span>     Caller-saved.  Arguments and       │
+        │              return values. Scratch.          │
+        │                                               │
+        │  <span class="hi">R4 – R11</span>    Callee-saved.  Function must       │
+        │              preserve these across calls.     │
+        │                                               │
+        │  <span class="hi">R12 (IP)</span>    Intra-procedure scratch.            │
+        │              Used by linker for veneers.      │
+        │                                               │
+        │  <span class="hi">R13 (SP)</span>    Stack pointer. Banked: MSP / PSP    │
+        │                                               │
+        │  <span class="hi">R14 (LR)</span>    Link register. Holds return addr.   │
+        │                                               │
+        │  <span class="hi">R15 (PC)</span>    Program counter. Always +4 ahead    │
+        │              of the executing instruction.    │
+        └───────────────────────────────────────────────┘
+
+        Special registers (accessed via MRS / MSR):
+        ┌───────────────────────────────────────────────┐
+        │  <span class="hi">xPSR</span>      Program status (APSR + IPSR + EPSR) │
+        │  <span class="hi">PRIMASK</span>   Global interrupt enable bit         │
+        │  <span class="hi">FAULTMASK</span> Disables all but NMI                │
+        │  <span class="hi">BASEPRI</span>   Mask interrupts below this priority │
+        │  <span class="hi">CONTROL</span>   Thread mode, stack select, FPU      │
+        └───────────────────────────────────────────────┘
+</pre>
+</div>
+
+<h4>R13 — the banked stack pointer</h4>
+
+<p>R13 is not a single register. It is two registers — <code>MSP</code> (main stack pointer) and <code>PSP</code> (process stack pointer) — that share the R13 name. Which one R13 actually refers to depends on the processor mode:</p>
+
+<ul>
+<li><strong>Handler mode</strong> (inside an interrupt or exception) always uses MSP.</li>
+<li><strong>Thread mode</strong> (normal code) uses MSP by default, but can switch to PSP by writing the CONTROL register.</li>
+</ul>
+
+<p>This dual-stack design is the foundation of RTOS task switching. Each task gets its own PSP-based stack; the kernel and interrupt handlers run on MSP. When a context switch happens, only the PSP changes — MSP stays fixed.</p>
+
+<h3>The AAPCS calling convention</h3>
+
+<p>The ARM Architecture Procedure Call Standard governs how functions pass arguments, return values, and preserve registers across calls. Every C compiler for Cortex-M follows it. Inline assembly must follow it too.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Register</th><th>Role</th><th>Preserved by</th></tr></thead>
+<tbody>
+<tr><td><code>R0</code></td><td>Argument 1, return value</td><td>Caller</td></tr>
+<tr><td><code>R1</code></td><td>Argument 2, second return word</td><td>Caller</td></tr>
+<tr><td><code>R2 – R3</code></td><td>Arguments 3 and 4</td><td>Caller</td></tr>
+<tr><td><code>R4 – R11</code></td><td>Local variables</td><td>Callee — must save and restore</td></tr>
+<tr><td><code>R12 (IP)</code></td><td>Linker scratch</td><td>Caller</td></tr>
+<tr><td><code>R13 (SP)</code></td><td>Stack pointer</td><td>Callee — must be 8-byte aligned at calls</td></tr>
+<tr><td><code>R14 (LR)</code></td><td>Return address</td><td>Caller — but callee saves it if it makes calls</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Arguments 5 and beyond are passed on the stack, in order, with the first stacked argument at the lowest address. Return values larger than 64 bits are returned via a hidden pointer argument in R0.</p>
+
+<div class="callout">
+<div class="callout-label">Note — 8-byte stack alignment</div>
+<p>The stack must be 8-byte aligned at every public function call boundary. Cortex-M can run with 4-byte alignment internally but exception entry hardware aligns to 8 bytes by default. If your inline assembly pushes an odd number of words, the next call may misalign and crash on FPU instructions or doubles.</p>
+</div>
+
+<h4>Reading a real function in disassembly</h4>
+
+<p>Consider this trivial C function:</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">add_three.c</span></div>
+<pre><span class="t">int</span> <span class="n">add_three</span><span class="p">(</span><span class="t">int</span> a<span class="p">,</span> <span class="t">int</span> b<span class="p">,</span> <span class="t">int</span> c<span class="p">) {</span>
+    <span class="k">return</span> a <span class="p">+</span> b <span class="p">+</span> c<span class="p">;</span>
+<span class="p">}</span>
+</pre>
+</div>
+
+<p>Compiled with <code>arm-none-eabi-gcc -O2 -mthumb -mcpu=cortex-m4</code>, the disassembly is:</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">ASM</span><span class="file">add_three.s</span></div>
+<pre><span class="n">add_three</span><span class="p">:</span>
+    <span class="k">add</span>     r0<span class="p">,</span> r0<span class="p">,</span> r1   <span class="c">@ r0 = a + b</span>
+    <span class="k">add</span>     r0<span class="p">,</span> r0<span class="p">,</span> r2   <span class="c">@ r0 = (a+b) + c</span>
+    <span class="k">bx</span>      lr           <span class="c">@ branch to address in LR -- the return</span>
+</pre>
+</div>
+
+<p>Three observations:</p>
+
+<ul>
+<li>Arguments came in via R0, R1, R2 — that's AAPCS in action.</li>
+<li>The return value sits in R0 — AAPCS again.</li>
+<li>No stack frame was needed because the function uses only argument registers, makes no calls, and has no locals. This is called a <em>leaf function</em>.</li>
+</ul>
+
+<h3>The xPSR — three status registers in one</h3>
+
+<p>The Program Status Register is actually three logical registers packed into one 32-bit value, named APSR, IPSR, and EPSR. They overlap on the same bits and you usually read them as the combined <code>xPSR</code>.</p>
+
+<div class="diagram">
+<div class="diagram-head">xPSR layout</div>
+<pre>
+  31  30  29  28  27 ─── 24  23 ─── 10  9    8 ─── 0
+  ┌───┬───┬───┬───┬─────────┬─────────┬───┬─────────┐
+  │ N │ Z │ C │ V │   ...   │   ICI   │ T │ ISR_NUM │
+  └───┴───┴───┴───┴─────────┴─────────┴───┴─────────┘
+   │   │   │   │              │        │       │
+   │   │   │   └ Overflow     │        │       └ Current exception
+   │   │   └ Carry            │        │         (0 = thread mode)
+   │   └ Zero                 │        │
+   └ Negative                 │        └ Thumb state -- must be 1
+                              │
+                              └ Interrupt-continuable instruction
+                                bits, used during LDM/STM resume
+</pre>
+</div>
+
+<p>Three groups of bits, three names:</p>
+
+<ul>
+<li><strong>APSR</strong> (Application PSR) — the four condition flags N, Z, C, V set by ALU operations.</li>
+<li><strong>IPSR</strong> (Interrupt PSR) — the bottom 9 bits identify the currently executing exception. Zero means thread mode.</li>
+<li><strong>EPSR</strong> (Execution PSR) — the Thumb-state bit (always 1 on Cortex-M) and the ICI/IT bits used during interruptible instructions.</li>
+</ul>
+
+<h4>Reading the special registers in C</h4>
+
+<p>You cannot access PRIMASK, BASEPRI, or CONTROL with normal C — they aren't memory-mapped. You need the MRS and MSR instructions, which CMSIS wraps in intrinsics:</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">special_regs.c</span></div>
+<pre><span class="k">#include</span> <span class="s">"cmsis_compiler.h"</span>
+
+<span class="c">/* Globally disable interrupts. Equivalent to "cli" on x86. */</span>
+<span class="t">void</span> <span class="n">enter_critical</span><span class="p">(</span><span class="t">void</span><span class="p">) {</span>
+    __disable_irq<span class="p">();</span>  <span class="c">/* sets PRIMASK = 1 */</span>
+<span class="p">}</span>
+
+<span class="c">/* Disable interrupts whose priority is &gt;= 4 (i.e. less urgent). */</span>
+<span class="c">/* Higher-priority interrupts still fire.                         */</span>
+<span class="t">void</span> <span class="n">enter_partial_critical</span><span class="p">(</span><span class="t">void</span><span class="p">) {</span>
+    __set_BASEPRI<span class="p">(</span><span class="s">4</span> <span class="p">&lt;&lt;</span> <span class="p">(</span><span class="s">8</span> <span class="p">-</span> __NVIC_PRIO_BITS<span class="p">));</span>
+<span class="p">}</span>
+
+<span class="c">/* Detect whether we are currently inside an ISR. */</span>
+<span class="t">int</span> <span class="n">in_interrupt</span><span class="p">(</span><span class="t">void</span><span class="p">) {</span>
+    <span class="k">return</span> <span class="p">(</span>__get_IPSR<span class="p">() !=</span> <span class="s">0</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c">/* Switch the current task to use PSP (typical RTOS startup). */</span>
+<span class="t">void</span> <span class="n">switch_to_psp</span><span class="p">(</span><span class="t">uint32_t</span> stack_top<span class="p">) {</span>
+    __set_PSP<span class="p">(</span>stack_top<span class="p">);</span>
+    __set_CONTROL<span class="p">(</span><span class="s">0x02</span><span class="p">);</span>  <span class="c">/* SPSEL = 1, use PSP in thread mode */</span>
+    __ISB<span class="p">();</span>                <span class="c">/* instruction barrier -- mandatory */</span>
+<span class="p">}</span>
+</pre>
+</div>
+
+<div class="callout warn">
+<div class="callout-label">Gotcha — the ISB after CONTROL change</div>
+<p>Writing to CONTROL takes effect immediately, but the pipeline may already have fetched instructions that assume the old stack pointer. The <code>__ISB()</code> instruction synchronization barrier flushes the pipeline so subsequent instructions see the new state. Without it, behaviour is undefined.</p>
+</div>
+
+<h3>The exception-stacked frame</h3>
+
+<p>When any exception (interrupt, fault, SVC) fires on Cortex-M, the hardware automatically pushes eight registers onto the current stack before vectoring to the handler. This is how the handler gets its own R0–R3 to work with while preserving the interrupted task's state.</p>
+
+<div class="diagram">
+<div class="diagram-head">Stack frame pushed by exception entry</div>
+<pre>
+                  ┌─────────────────┐  ← SP before exception
+   xPSR  ──────▶  │     xPSR        │
+   PC    ──────▶  │     PC          │
+   LR    ──────▶  │     LR          │
+   R12   ──────▶  │     R12         │
+   R3    ──────▶  │     R3          │
+   R2    ──────▶  │     R2          │
+   R1    ──────▶  │     R1          │
+   R0    ──────▶  │     R0          │  ← SP at start of handler
+                  └─────────────────┘
+                       ↑ grows down
+
+   Hardware pushes 8 x 32-bit = 32 bytes.
+   With FPU + lazy stacking, 17 more words may be reserved.
+</pre>
+</div>
+
+<p>This means you can write an exception handler in pure C — the compiler will save R4–R11 itself if it needs them, and the hardware already saved R0–R3 and the return state. <strong>You do not need a wrapper assembly trampoline for ordinary ISRs.</strong></p>
+
+<h3>Interview Questions</h3>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">What is the AAPCS, and why should an embedded developer care about it?</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p>The <strong>ARM Architecture Procedure Call Standard</strong> defines how functions pass arguments, return values, and preserve registers across calls on ARM. It is the contract the C compiler follows when emitting function entry and exit code.</p>
+<p>You care because:</p>
+<ul>
+<li><strong>Inline assembly must follow AAPCS</strong> if it calls C functions or is called from C. Clobbering R4–R11 without saving them corrupts the caller's state.</li>
+<li><strong>Reading disassembly requires it</strong> — you need to know that R0 holds the first argument and the return value to make sense of compiled code.</li>
+<li><strong>Reasoning about stack usage and ISR latency</strong> depends on knowing what the compiler will save (R4–R11) versus what the hardware saves automatically (R0–R3, R12, LR, PC, xPSR).</li>
+<li><strong>Linking C++ with C and vice versa</strong> requires understanding which registers may pass hidden arguments like the <code>this</code> pointer (passed in R0 for member functions).</li>
+</ul>
+</div>
+</div>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">Why does Cortex-M have two stack pointers, MSP and PSP? When are they used?</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p>The dual stack pointer design lets you cleanly separate <strong>kernel and interrupt code (running on MSP) from user task code (running on PSP)</strong>. This is essential for an RTOS.</p>
+<p>The mechanics:</p>
+<ul>
+<li>After reset, the CPU uses <strong>MSP</strong> for everything. The Reset_Handler runs on MSP. <code>main()</code> runs on MSP.</li>
+<li>When an exception fires, the CPU <em>always</em> uses MSP in handler mode, regardless of what thread mode was using.</li>
+<li>An RTOS will, during the first task switch, write the CONTROL register to make thread mode use <strong>PSP</strong>. Each task gets its own PSP-based stack.</li>
+<li>From then on: task code runs on PSP, kernel and ISRs run on MSP. A context switch only changes PSP — MSP stays fixed.</li>
+</ul>
+<p>Benefits: task stack overflow can't corrupt the kernel's stack. Interrupts always have a known, fixed stack to land on. You can configure MPU regions separately for kernel and task code.</p>
+</div>
+</div>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">When an interrupt fires on Cortex-M, which registers are automatically saved by hardware, and which must the handler save?</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p><strong>Hardware automatically pushes eight 32-bit words</strong> onto the current stack on exception entry: R0, R1, R2, R3, R12, LR, PC, and xPSR. This is called the <em>exception stack frame</em>.</p>
+<p>If the FPU is active and lazy stacking is configured, the hardware also reserves space for S0–S15 and FPSCR but defers the actual save until the handler touches the FPU.</p>
+<p><strong>The handler must save R4–R11 itself if it uses them.</strong> But because handlers are typically written in C, the compiler emits push/pop for these as part of the prologue/epilogue. You almost never need to think about it.</p>
+<p>This automatic stacking is also why Cortex-M interrupt entry is so fast — about 12 cycles on M3/M4 — and why you can write ISRs in pure C with no assembly wrapper.</p>
+</div>
+</div>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">What is the difference between PRIMASK, FAULTMASK, and BASEPRI?</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p>All three control interrupt masking, but with different granularity:</p>
+<ul>
+<li><strong>PRIMASK</strong> — a single bit. When set to 1, all configurable interrupts and exceptions are masked. NMI and HardFault still fire. This is what <code>__disable_irq()</code> sets. Think "cli" on x86.</li>
+<li><strong>FAULTMASK</strong> — like PRIMASK but more aggressive. Also masks HardFault. Only NMI can fire. Used by fault handlers to prevent nested faults.</li>
+<li><strong>BASEPRI</strong> — an 8-bit priority threshold. Interrupts with priority <em>numerically greater than or equal to</em> BASEPRI are masked; higher-priority (numerically lower) interrupts still fire. This is the right primitive for an RTOS that wants to protect critical sections without disabling its most urgent interrupts.</li>
+</ul>
+<p>An RTOS like FreeRTOS uses BASEPRI in its critical sections so that timing-critical ISRs (configMAX_SYSCALL_INTERRUPT_PRIORITY and above) keep running even while the scheduler is locked. The kernel doesn't touch PRIMASK in normal operation.</p>
+</div>
+</div>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">Given the C function <code>int sum(int *arr, int n)</code> that sums an array, sketch the AAPCS register usage at the entry and explain what R0 holds during the loop.</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p>At entry, AAPCS dictates:</p>
+<ul>
+<li><code>R0</code> = <code>arr</code> (the pointer)</li>
+<li><code>R1</code> = <code>n</code> (the count)</li>
+<li><code>LR</code> = return address</li>
+</ul>
+<p>During the loop, the compiler typically does this:</p>
+<ul>
+<li><code>R0</code> may be repurposed to hold the running <strong>accumulator</strong>, because R0 is also the return register and starting the accumulation in R0 saves a move at the end.</li>
+<li><code>R1</code> may hold the remaining count, decremented each iteration.</li>
+<li><code>R2</code> or <code>R3</code> holds the current pointer (a copy of the original R0).</li>
+</ul>
+<p>You can verify this by compiling with <code>-O2 -mthumb -mcpu=cortex-m4</code> and looking at the disassembly. The key insight for an interviewer is: <em>R0 enters as the first argument, may be reused for any purpose during the function (since it's caller-saved), and must hold the return value at the BX LR.</em></p>
+</div>
+</div>
+
+  </article>
+</section>
+
+<div class="topic-divider"><hr></div>
+
+
+<section id="topic-03" class="topic-anchor">
+  <div class="topic-banner">
+    <div class="topic-banner-inner">
+      <div class="topic-banner-num">03</div>
+      <div>
+        <div class="topic-banner-meta"><span class="id">Topic 03</span> · Foundation</div>
+      </div>
+    </div>
+  </div>
+
+  <article class="article">
+    <div class="article-meta">
+      <span class="topic-id">Handbook 02</span>
+      <span class="dot">·</span>
+      <span>Topic 03</span>
+      <span class="dot">·</span>
+      <span>Foundation</span>
+    </div>
+    <h2>Memory Map, Bus Matrix & <span class="em">AHB / APB</span></h2>
+    <p class="lede">Every Cortex-M sees the world through a fixed 4 GB address map. The genius is that vendors carve out their flash, SRAM, and peripherals within an architectural framework that's identical across silicon — making CMSIS and most driver patterns portable.</p>
+    
+<h3>The four-gigabyte address space</h3>
+
+<p>Cortex-M provides a 32-bit linear address space — exactly 4 GB. ARM divides this into eight 512 MB regions, each with predefined access rules and intended use. The vendor's silicon places real memory into those regions; you, the firmware engineer, never see "all 4 GB" but you must know where in the map each thing lives.</p>
+
+<div class="diagram">
+<div class="diagram-head">Cortex-M architectural memory map</div>
+<pre>
+   <span class="hi">0xFFFFFFFF</span> ┌─────────────────────────────────┐
+              │ <span class="hi">Vendor-specific</span>                 │ 0xE0100000 – 0xFFFFFFFF
+              │ (often unused on small MCUs)    │
+   0xE0100000 ├─────────────────────────────────┤
+              │ <span class="hi">Private Peripheral Bus (PPB)</span>    │ <span class="em">NVIC, SysTick, MPU,</span>
+              │                                 │ <span class="em">SCB, ITM, DWT, ETM</span>
+   0xE0000000 ├─────────────────────────────────┤
+              │ External device                 │ Generally unused on small MCUs
+   0xA0000000 ├─────────────────────────────────┤
+              │ External RAM                    │ SDRAM, QSPI memory-mapped
+   0x60000000 ├─────────────────────────────────┤
+              │ Peripheral                      │ <span class="em">UART, SPI, I2C, GPIO</span>
+              │ (with bit-band alias 0x42xxxxxx)│ <span class="em">Timer, DMA, ADC ...</span>
+   0x40000000 ├─────────────────────────────────┤
+              │ <span class="hi">SRAM</span>                            │ <span class="em">On-chip RAM lives here</span>
+              │ (with bit-band alias 0x22xxxxxx)│
+   0x20000000 ├─────────────────────────────────┤
+              │ <span class="hi">CODE</span>                            │ <span class="em">Flash, possibly aliased ROM</span>
+              │ (where vector table lives)      │
+   <span class="hi">0x00000000</span> └─────────────────────────────────┘
+</pre>
+</div>
+
+<p>This layout is part of the ARM architecture, not a vendor decision. Every Cortex-M chip — STM32, nRF52, LPC, EFM32, MAX32 — places its NVIC and SysTick at exactly the same addresses. That is why a single CMSIS header works across all vendors.</p>
+
+<h3>What lives where</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Range</th><th>Region</th><th>What's there</th></tr></thead>
+<tbody>
+<tr><td><code>0x00000000 – 0x1FFFFFFF</code></td><td>CODE</td><td>Internal flash; vector table at 0x00000000 after reset. May be aliased to flash's true address.</td></tr>
+<tr><td><code>0x20000000 – 0x3FFFFFFF</code></td><td>SRAM</td><td>On-chip SRAM. Vendor places the actual bytes anywhere in this region.</td></tr>
+<tr><td><code>0x40000000 – 0x5FFFFFFF</code></td><td>Peripheral</td><td>Memory-mapped peripheral registers. APB and AHB peripherals.</td></tr>
+<tr><td><code>0x60000000 – 0x9FFFFFFF</code></td><td>External RAM</td><td>External SDRAM or memory-mapped QSPI flash on chips that support it.</td></tr>
+<tr><td><code>0xA0000000 – 0xDFFFFFFF</code></td><td>External device</td><td>External peripheral bus; rare on MCUs.</td></tr>
+<tr><td><code>0xE0000000 – 0xE00FFFFF</code></td><td><strong>PPB</strong></td><td><strong>Private Peripheral Bus.</strong> NVIC, SysTick, MPU, SCB, ITM. Same on every Cortex-M.</td></tr>
+<tr><td><code>0xE0100000 – 0xFFFFFFFF</code></td><td>Vendor</td><td>Vendor-specific extensions, rarely used.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout key">
+<div class="callout-label">Key Idea — the PPB at 0xE0000000</div>
+<p>Everything the Cortex-M core itself provides — interrupt controller, system timer, fault handlers, debug, trace — lives in the PPB region. This region is <em>not</em> accessible to DMA controllers and bypasses the bus matrix. Reads and writes here go directly to the core's internal logic.</p>
+</div>
+
+<h3>The bus matrix</h3>
+
+<p>Inside the chip, the Cortex-M core does not directly talk to flash, SRAM, and peripherals. Instead, those memories sit behind a <strong>bus matrix</strong> — a crossbar switch that arbitrates between the core's I-bus, D-bus, and S-bus on one side, and the various memory and peripheral interfaces on the other.</p>
+
+<div class="diagram">
+<div class="diagram-head">Cortex-M bus matrix on a typical chip</div>
+<pre>
+   ┌──────────────┐                 ┌──────────────┐
+   │  Cortex-M    │                 │     DMA      │
+   │              │                 │  controller  │
+   └──┬──┬──┬─────┘                 └──────┬───────┘
+      │  │  │ I-bus, D-bus, S-bus          │
+      ▼  ▼  ▼                              ▼
+   ╔═══════════════════════════════════════════════╗
+   ║              <span class="hi">BUS MATRIX (AHB)</span>                  ║
+   ║          (multi-master crossbar)              ║
+   ╚═══╤═══════════╤═══════════╤═══════════╤═══════╝
+       ▼           ▼           ▼           ▼
+   ┌──────┐   ┌─────────┐   ┌─────────┐  ┌───────┐
+   │ Flash│   │  SRAM   │   │   AHB   │  │  APB  │
+   │      │   │         │   │ Periph. │  │  via  │
+   └──────┘   └─────────┘   └─────────┘  │ AHB-  │
+                                         │  APB  │
+                                         │bridge │
+                                         └───┬───┘
+                                             ▼
+                                 ┌──────┬──────┬──────┐
+                                 │ UART │ SPI  │ I2C  │  ...
+                                 └──────┴──────┴──────┘
+</pre>
+</div>
+
+<p>The bus matrix is why DMA can run concurrently with the CPU — they have separate ports into the matrix and can access different slaves in parallel. If CPU is reading flash and DMA is writing SRAM, both proceed at full speed. If both want the same slave, the matrix arbitrates and one waits.</p>
+
+<h3>AHB vs APB — high speed and low speed</h3>
+
+<p>ARM defined two bus protocols, both part of the AMBA (Advanced Microcontroller Bus Architecture) family:</p>
+
+<ul>
+<li><strong>AHB</strong> — Advanced High-performance Bus. Pipelined, supports burst transfers, runs at the system clock (often 100+ MHz). Used for flash, SRAM, DMA, and high-bandwidth peripherals like Ethernet and USB.</li>
+<li><strong>APB</strong> — Advanced Peripheral Bus. Simpler, lower-speed, two-cycle minimum per transfer, runs at a divided clock (often 50 MHz or less). Used for slow peripherals — UART, SPI, I2C, GPIO, timers.</li>
+</ul>
+
+<p>A typical chip will have multiple bus instances:</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Bus name</th><th>Typical clock</th><th>What's on it</th></tr></thead>
+<tbody>
+<tr><td><strong>AHB1</strong></td><td>System clock (HCLK)</td><td>Flash, SRAM, GPIO, RCC, CRC, DMA</td></tr>
+<tr><td><strong>AHB2</strong></td><td>System clock</td><td>USB OTG, camera interface, crypto</td></tr>
+<tr><td><strong>AHB3</strong></td><td>System clock</td><td>External memory controller (FMC)</td></tr>
+<tr><td><strong>APB1</strong></td><td>HCLK / 2 or / 4</td><td>UART2-5, SPI2-3, I2C, basic timers</td></tr>
+<tr><td><strong>APB2</strong></td><td>HCLK / 2</td><td>UART1, SPI1, advanced timers, ADC</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout warn">
+<div class="callout-label">Gotcha — APB timer clock multiplier</div>
+<p>On STM32 chips, when an APB prescaler is greater than 1, the timer clock on that bus is automatically <em>doubled</em>. So if APB1 runs at HCLK/4, the timers on APB1 still run at HCLK/2. This catches everyone the first time. Always read the clock tree diagram carefully.</p>
+</div>
+
+<h3>Reading peripheral registers — the volatile rule</h3>
+
+<p>Peripheral registers live in the Peripheral region (0x40000000+). They are memory-mapped — you read and write them like any byte in RAM. But you <em>must</em> mark them <code>volatile</code> so the compiler does not optimize away accesses.</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">peripheral_access.c</span></div>
+<pre><span class="k">#include</span> <span class="s">&lt;stdint.h&gt;</span>
+
+<span class="c">/* Manually defining a GPIO register block on STM32F4 */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+    <span class="k">volatile</span> <span class="t">uint32_t</span> MODER<span class="p">;</span>     <span class="c">/* Mode register     */</span>
+    <span class="k">volatile</span> <span class="t">uint32_t</span> OTYPER<span class="p">;</span>    <span class="c">/* Output type       */</span>
+    <span class="k">volatile</span> <span class="t">uint32_t</span> OSPEEDR<span class="p">;</span>   <span class="c">/* Speed             */</span>
+    <span class="k">volatile</span> <span class="t">uint32_t</span> PUPDR<span class="p">;</span>     <span class="c">/* Pull-up/down      */</span>
+    <span class="k">volatile</span> <span class="t">uint32_t</span> IDR<span class="p">;</span>       <span class="c">/* Input data        */</span>
+    <span class="k">volatile</span> <span class="t">uint32_t</span> ODR<span class="p">;</span>       <span class="c">/* Output data       */</span>
+    <span class="k">volatile</span> <span class="t">uint32_t</span> BSRR<span class="p">;</span>      <span class="c">/* Bit set/reset     */</span>
+    <span class="k">volatile</span> <span class="t">uint32_t</span> LCKR<span class="p">;</span>      <span class="c">/* Lock register     */</span>
+    <span class="k">volatile</span> <span class="t">uint32_t</span> AFR<span class="p">[</span><span class="s">2</span><span class="p">];</span>    <span class="c">/* Alt function low/high */</span>
+<span class="p">}</span> GPIO_TypeDef<span class="p">;</span>
+
+<span class="c">/* Place a struct at the GPIOA base address                     */</span>
+<span class="c">/* On STM32F4, AHB1 starts at 0x40020000, GPIOA at offset 0     */</span>
+<span class="k">#define</span> GPIOA  <span class="p">((</span>GPIO_TypeDef <span class="p">*)</span><span class="s">0x40020000</span><span class="p">)</span>
+
+<span class="t">void</span> <span class="n">gpio_set_pin13</span><span class="p">(</span><span class="t">void</span><span class="p">) {</span>
+    GPIOA<span class="p">-&gt;</span>BSRR <span class="p">=</span> <span class="p">(</span><span class="s">1</span> <span class="p">&lt;&lt;</span> <span class="s">13</span><span class="p">);</span>      <span class="c">/* atomic set bit 13   */</span>
+<span class="p">}</span>
+
+<span class="t">void</span> <span class="n">gpio_clr_pin13</span><span class="p">(</span><span class="t">void</span><span class="p">) {</span>
+    GPIOA<span class="p">-&gt;</span>BSRR <span class="p">=</span> <span class="p">(</span><span class="s">1</span> <span class="p">&lt;&lt;</span> <span class="p">(</span><span class="s">13</span><span class="p">+</span><span class="s">16</span><span class="p">));</span> <span class="c">/* atomic clear bit 13 */</span>
+<span class="p">}</span>
+</pre>
+</div>
+
+<p>Without <code>volatile</code> on each register, the compiler is free to cache reads and drop "redundant" writes — and your firmware breaks in subtle, optimization-level-dependent ways.</p>
+
+<h3>Bit-banding — atomic single-bit access</h3>
+
+<p>Cortex-M3 and M4 (but not M0, M0+, M7, M33) implement <strong>bit-banding</strong>: a 1 MB region of SRAM (0x20000000 – 0x200FFFFF) and a 1 MB region of peripherals (0x40000000 – 0x400FFFFF) are aliased into 32 MB regions where each bit gets its own word address.</p>
+
+<div class="diagram">
+<div class="diagram-head">Bit-banding alias</div>
+<pre>
+   Original SRAM region (1 MB):
+   0x20000000  ┌──── byte 0 ───── byte 1 ───── byte 2 ───
+               │ bbbbbbbb       bbbbbbbb        ...
+               └─...
+
+   Bit-band alias (32 MB):
+   0x22000000  ┌── word for bit 0 of byte 0
+   0x22000004  ├── word for bit 1 of byte 0
+   0x22000008  ├── word for bit 2 of byte 0
+        ...
+   0x2200001C  ├── word for bit 7 of byte 0
+   0x22000020  ├── word for bit 0 of byte 1
+        ...
+
+   Writing 1 to alias address sets that bit atomically.
+   Writing 0 clears it atomically.
+   Reading returns 0 or 1.
+</pre>
+</div>
+
+<p>The address calculation: <code>alias = 0x22000000 + (byte_offset * 32) + (bit_number * 4)</code>.</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">bitband.c</span></div>
+<pre><span class="c">/* Atomic single-bit access via bit-banding (M3/M4 only)        */</span>
+<span class="k">#define</span> BITBAND_SRAM<span class="p">(</span>addr<span class="p">,</span> bit<span class="p">) \</span>
+    <span class="p">((</span><span class="t">volatile</span> <span class="t">uint32_t</span> <span class="p">*)(</span><span class="s">0x22000000</span> <span class="p">+ \</span>
+        <span class="p">(((</span><span class="t">uint32_t</span><span class="p">)(</span>addr<span class="p">) -</span> <span class="s">0x20000000</span><span class="p">) &lt;&lt;</span> <span class="s">5</span><span class="p">) + \</span>
+        <span class="p">((</span>bit<span class="p">) &lt;&lt;</span> <span class="s">2</span><span class="p">)))</span>
+
+<span class="t">uint32_t</span> shared_flags<span class="p">;</span>
+
+<span class="c">/* These are guaranteed atomic on M3/M4 even without disabling IRQs */</span>
+<span class="t">void</span> <span class="n">set_flag_3</span><span class="p">(</span><span class="t">void</span><span class="p">)   {</span> <span class="p">*</span>BITBAND_SRAM<span class="p">(&amp;</span>shared_flags<span class="p">,</span> <span class="s">3</span><span class="p">) =</span> <span class="s">1</span><span class="p">; }</span>
+<span class="t">void</span> <span class="n">clear_flag_3</span><span class="p">(</span><span class="t">void</span><span class="p">) {</span> <span class="p">*</span>BITBAND_SRAM<span class="p">(&amp;</span>shared_flags<span class="p">,</span> <span class="s">3</span><span class="p">) =</span> <span class="s">0</span><span class="p">; }</span>
+<span class="t">int</span>  <span class="n">test_flag_3</span><span class="p">(</span><span class="t">void</span><span class="p">)  {</span> <span class="k">return</span> <span class="p">*</span>BITBAND_SRAM<span class="p">(&amp;</span>shared_flags<span class="p">,</span> <span class="s">3</span><span class="p">); }</span>
+</pre>
+</div>
+
+<p>Bit-banding was the Cortex-M3/M4 era's solution to read-modify-write hazards. On M7 and later, ARM removed it because exclusive load/store instructions (LDREX/STREX) provide more general atomicity. Modern code typically uses CMSIS atomic intrinsics or C11 <code>&lt;stdatomic.h&gt;</code>.</p>
+
+<h3>Interview Questions</h3>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">Why is the Cortex-M memory map "fixed" by ARM, and what flexibility do silicon vendors retain?</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p>ARM defines the eight 512 MB regions and their access attributes. The architectural reasons:</p>
+<ul>
+<li><strong>Portability of system software.</strong> CMSIS, RTOS kernels, debug tools all assume NVIC lives at 0xE000E100, SysTick at 0xE000E010, etc. If each vendor moved them, every piece of software would be vendor-specific.</li>
+<li><strong>Speculative execution and prefetching rules.</strong> The architecture defines which regions are "device" (no speculation, no reordering) versus "normal" (cacheable, reorderable). Flash is Normal; the PPB is Strongly Ordered. The CPU's memory system relies on these region attributes.</li>
+<li><strong>MPU defaults.</strong> Even without MPU configuration, the default region attributes provide reasonable behavior.</li>
+</ul>
+<p>Vendors choose:</p>
+<ul>
+<li>Whether to populate each region, and how much memory to expose.</li>
+<li>What peripherals to map into the Peripheral region and at what offsets.</li>
+<li>Whether to provide flash aliases (e.g., STM32 maps flash at 0x00000000 and 0x08000000).</li>
+<li>How to populate the External RAM region — many small MCUs leave it empty.</li>
+</ul>
+</div>
+</div>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">What is the difference between AHB and APB? Why don't vendors use AHB everywhere?</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p><strong>AHB</strong> is the high-performance bus — pipelined, supports burst transfers, can run at the full system clock. <strong>APB</strong> is the peripheral bus — simpler, two-cycle minimum per transfer, runs at a divided clock.</p>
+<p>Vendors don't put everything on AHB because:</p>
+<ul>
+<li><strong>Silicon area and power.</strong> AHB peripherals need more logic — burst state machines, pipeline registers. For a UART that runs at 1 Mbps, that's wasteful. APB's simple two-phase access is plenty.</li>
+<li><strong>Clocking.</strong> A simple peripheral can tolerate a slower clock, saving dynamic power. Running an I2C controller at 168 MHz when the bus operates at 400 kHz is pointless.</li>
+<li><strong>Bus crowding.</strong> Putting everything on one bus would create contention. Splitting peripherals across AHB and APB (and across multiple APB instances) lets DMA and CPU access different peripherals simultaneously.</li>
+</ul>
+<p>Typical division: anything bandwidth-critical (DMA, USB, Ethernet, external memory) goes on AHB. Everything else (UART, SPI, I2C, GPIO, timers, ADC) goes on APB.</p>
+</div>
+</div>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">What is bit-banding and what problem does it solve?</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p>Bit-banding is a Cortex-M3 and M4 feature that aliases each <em>bit</em> in a 1 MB SRAM region (and a 1 MB peripheral region) to its own 32-bit address. Writing 1 to the alias address sets that bit atomically; writing 0 clears it.</p>
+<p>It solves the <strong>read-modify-write hazard</strong> that exists when toggling a single bit in a shared variable. Without bit-banding:</p>
+<pre style="background:#0e0c08;padding:14px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#b8ad94;margin:12px 0">
+shared |= (1 &lt;&lt; 3);   <span style="color:#7d735f">// load shared, OR, store back</span>
+                      <span style="color:#7d735f">// interrupt in the middle breaks atomicity</span>
+</pre>
+<p>With bit-banding, the alias write is a single bus transaction that atomically modifies just bit 3 of the underlying word. No interrupt can interleave.</p>
+<p>ARM removed bit-banding from M7 and later cores because exclusive load/store instructions (LDREX/STREX) and proper atomic primitives provide more general solutions. Modern code uses <code>&lt;stdatomic.h&gt;</code> or CMSIS atomic intrinsics.</p>
+</div>
+</div>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">Why must peripheral registers be declared <code>volatile</code>?</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p>The C compiler assumes that ordinary memory has no side effects beyond reads and writes. Under that assumption, it freely optimizes:</p>
+<ul>
+<li>If you write the same value twice, the second write may be dropped.</li>
+<li>If you read a location without modifying it in between, the second read may be replaced by the cached value.</li>
+<li>Read and write orders may be reordered if dependencies allow.</li>
+</ul>
+<p>Peripheral registers break all three assumptions. Reading a UART data register has the side effect of consuming a byte from the FIFO. Writing to a control register triggers hardware action. Writing twice may be necessary because the hardware latches on each edge.</p>
+<p><code>volatile</code> tells the compiler: <strong>this location may change without my code touching it, and every read and write I write must produce a real bus transaction in the order I wrote them</strong>.</p>
+<p>Note that <code>volatile</code> is not sufficient for thread safety across CPU cores or for ordering with DMA — for those you need memory barriers (<code>__DMB</code>, <code>__DSB</code>) or atomic primitives.</p>
+</div>
+</div>
+
+  </article>
+</section>
+
+<div class="topic-divider"><hr></div>
+
+
+<section id="topic-04" class="topic-anchor">
+  <div class="topic-banner">
+    <div class="topic-banner-inner">
+      <div class="topic-banner-num">04</div>
+      <div>
+        <div class="topic-banner-meta"><span class="id">Topic 04</span> · Foundation</div>
+      </div>
+    </div>
+  </div>
+
+  <article class="article">
+    <div class="article-meta">
+      <span class="topic-id">Handbook 02</span>
+      <span class="dot">·</span>
+      <span>Topic 04</span>
+      <span class="dot">·</span>
+      <span>Foundation</span>
+    </div>
+    <h2>Pipeline, Branch Prediction & <span class="em">Counters</span></h2>
+    <p class="lede">Modern Cortex-M cores look like simple in-order machines on the outside, but underneath they pipeline instructions, predict branches, and provide cycle-accurate counters that let you measure exactly how long anything takes. Mastering these turns a black-box CPU into an instrument.</p>
+    
+<h3>The Cortex-M pipeline</h3>
+
+<p>Cortex-M is an <em>in-order</em> machine — instructions retire in the order they were fetched — but it pipelines fetch, decode, and execute so that multiple instructions are in flight simultaneously. The pipeline depth varies by core:</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Core</th><th>Stages</th><th>Dispatch</th><th>Branch prediction</th></tr></thead>
+<tbody>
+<tr><td><strong>Cortex-M0 / M0+</strong></td><td>3 (Fetch, Decode, Execute)</td><td>Single-issue</td><td>None — branches always flush</td></tr>
+<tr><td><strong>Cortex-M3 / M4</strong></td><td>3 (Fetch, Decode, Execute)</td><td>Single-issue</td><td>Simple — predicts branches as taken</td></tr>
+<tr><td><strong>Cortex-M7</strong></td><td>6 (Fetch1, Fetch2, Decode, Issue, Execute, Writeback)</td><td>Dual-issue (superscalar)</td><td>Branch predictor unit (BPU)</td></tr>
+<tr><td><strong>Cortex-M33</strong></td><td>3 (Fetch, Decode, Execute)</td><td>Single-issue</td><td>Optional BPU</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="diagram">
+<div class="diagram-head">Cortex-M3/M4 three-stage pipeline</div>
+<pre>
+   Time  ─────────────────────────────────────────────▶
+
+   Cycle 1     Cycle 2     Cycle 3     Cycle 4     Cycle 5
+
+   ┌──────┐
+   │ ADD  │ Fetch    Decode    Execute
+   └──────┘
+            ┌──────┐
+            │ SUB  │  Fetch    Decode    Execute
+            └──────┘
+                     ┌──────┐
+                     │ LDR  │  Fetch    Decode    Execute
+                     └──────┘
+                              ┌──────┐
+                              │ STR  │  Fetch    Decode    Execute
+                              └──────┘
+
+   At any cycle, three instructions are in flight in different stages.
+   Throughput approaches one instruction per cycle in straight-line code.
+</pre>
+</div>
+
+<h4>Why R15 (PC) always reads ahead by 4</h4>
+
+<p>Because the pipeline fetches ahead, when an instruction reads the PC, it gets the address of the <em>next next</em> instruction — not the currently executing one. On Cortex-M (Thumb-2), this means PC reads as <strong>current_instruction_address + 4</strong>.</p>
+
+<p>This is invisible most of the time but it matters for hand-written assembly that uses PC-relative addressing, and for instructions like <code>BLX PC</code> which would target an address 4 bytes ahead.</p>
+
+<h3>Branch handling</h3>
+
+<p>When a branch is taken, the instructions already in the pipeline behind it are wrong — they were the sequential continuation. The pipeline must flush them and refill from the branch target. This is called a <strong>branch penalty</strong>, and it costs cycles:</p>
+
+<ul>
+<li><strong>Cortex-M0:</strong> 3-cycle penalty (entire pipeline flush).</li>
+<li><strong>Cortex-M3/M4:</strong> 1-3 cycle penalty depending on alignment and whether the target is in the prefetch buffer.</li>
+<li><strong>Cortex-M7:</strong> Branch predictor speculates ahead; correct prediction is free, misprediction costs ~5 cycles.</li>
+</ul>
+
+<div class="callout">
+<div class="callout-label">Note — branch density matters</div>
+<p>Tight loops with one branch back to the top run nearly at peak throughput because the predictor learns the pattern. Code dense with unpredictable branches (state machines, switch statements with cold paths) pays the misprediction tax repeatedly. This is why DSP code unrolls loops and avoids data-dependent branches.</p>
+</div>
+
+<h3>DWT and the cycle counter</h3>
+
+<p>The <strong>Data Watchpoint and Trace (DWT)</strong> unit lives in the PPB at <code>0xE0001000</code>. It provides a free-running 32-bit cycle counter (<code>DWT-&gt;CYCCNT</code>) that ticks once per CPU clock. This is the single most useful debugging tool you have for measuring execution time.</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">cycle_counter.c</span></div>
+<pre><span class="k">#include</span> <span class="s">"core_cm4.h"</span>
+
+<span class="c">/* One-time setup at boot */</span>
+<span class="t">void</span> <span class="n">dwt_init</span><span class="p">(</span><span class="t">void</span><span class="p">) {</span>
+    <span class="c">/* Enable the DWT and ITM block in DEMCR */</span>
+    CoreDebug<span class="p">-&gt;</span>DEMCR <span class="p">|=</span> CoreDebug_DEMCR_TRCENA_Msk<span class="p">;</span>
+
+    <span class="c">/* Reset and enable the cycle counter */</span>
+    DWT<span class="p">-&gt;</span>CYCCNT <span class="p">=</span> <span class="s">0</span><span class="p">;</span>
+    DWT<span class="p">-&gt;</span>CTRL   <span class="p">|=</span> DWT_CTRL_CYCCNTENA_Msk<span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c">/* Measure the cycle cost of a code region */</span>
+<span class="t">uint32_t</span> <span class="n">measure_cycles</span><span class="p">(</span><span class="t">void</span> <span class="p">(*</span>fn<span class="p">)(</span><span class="t">void</span><span class="p">)) {</span>
+    <span class="t">uint32_t</span> start <span class="p">=</span> DWT<span class="p">-&gt;</span>CYCCNT<span class="p">;</span>
+    fn<span class="p">();</span>
+    <span class="t">uint32_t</span> end   <span class="p">=</span> DWT<span class="p">-&gt;</span>CYCCNT<span class="p">;</span>
+    <span class="k">return</span> end <span class="p">-</span> start<span class="p">;</span>  <span class="c">/* unsigned subtraction handles wraparound */</span>
+<span class="p">}</span>
+
+<span class="c">/* Microsecond-resolution delay using the cycle counter */</span>
+<span class="t">void</span> <span class="n">delay_us</span><span class="p">(</span><span class="t">uint32_t</span> us<span class="p">) {</span>
+    <span class="k">extern</span> <span class="t">uint32_t</span> SystemCoreClock<span class="p">;</span>
+    <span class="t">uint32_t</span> cycles <span class="p">=</span> us <span class="p">* (</span>SystemCoreClock <span class="p">/</span> <span class="s">1000000</span><span class="p">);</span>
+    <span class="t">uint32_t</span> start  <span class="p">=</span> DWT<span class="p">-&gt;</span>CYCCNT<span class="p">;</span>
+    <span class="k">while</span> <span class="p">((</span>DWT<span class="p">-&gt;</span>CYCCNT <span class="p">-</span> start<span class="p">) &lt;</span> cycles<span class="p">) {}</span>
+<span class="p">}</span>
+</pre>
+</div>
+
+<h4>Using CYCCNT to benchmark</h4>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">benchmark_example.c</span></div>
+<pre><span class="c">/* Compare two implementations of the same hash function */</span>
+<span class="t">uint32_t</span> <span class="n">hash_naive</span><span class="p">(</span><span class="k">const</span> <span class="t">uint8_t</span> <span class="p">*</span>data<span class="p">,</span> <span class="t">size_t</span> len<span class="p">);</span>
+<span class="t">uint32_t</span> <span class="n">hash_unrolled</span><span class="p">(</span><span class="k">const</span> <span class="t">uint8_t</span> <span class="p">*</span>data<span class="p">,</span> <span class="t">size_t</span> len<span class="p">);</span>
+
+<span class="t">void</span> <span class="n">compare_implementations</span><span class="p">(</span><span class="t">void</span><span class="p">) {</span>
+    <span class="t">uint8_t</span> buf<span class="p">[</span><span class="s">256</span><span class="p">];</span>
+    <span class="t">uint32_t</span> sink<span class="p">;</span>  <span class="c">/* prevent the compiler from eliding the call */</span>
+
+    <span class="t">uint32_t</span> t1 <span class="p">=</span> DWT<span class="p">-&gt;</span>CYCCNT<span class="p">;</span>
+    sink <span class="p">=</span> <span class="n">hash_naive</span><span class="p">(</span>buf<span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span>buf<span class="p">));</span>
+    <span class="t">uint32_t</span> t2 <span class="p">=</span> DWT<span class="p">-&gt;</span>CYCCNT<span class="p">;</span>
+
+    <span class="t">uint32_t</span> t3 <span class="p">=</span> DWT<span class="p">-&gt;</span>CYCCNT<span class="p">;</span>
+    sink <span class="p">=</span> <span class="n">hash_unrolled</span><span class="p">(</span>buf<span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span>buf<span class="p">));</span>
+    <span class="t">uint32_t</span> t4 <span class="p">=</span> DWT<span class="p">-&gt;</span>CYCCNT<span class="p">;</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">"naive:    %u cycles\n"</span><span class="p">,</span> <span class="p">(</span><span class="t">unsigned</span><span class="p">)(</span>t2 <span class="p">-</span> t1<span class="p">));</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"unrolled: %u cycles\n"</span><span class="p">,</span> <span class="p">(</span><span class="t">unsigned</span><span class="p">)(</span>t4 <span class="p">-</span> t3<span class="p">));</span>
+    <span class="p">(</span><span class="t">void</span><span class="p">)</span>sink<span class="p">;</span>
+<span class="p">}</span>
+</pre>
+</div>
+
+<h3>Other DWT counters worth knowing</h3>
+
+<p>Beyond the cycle counter, the DWT exposes several event counters that hint at why code is slow:</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Counter</th><th>What it counts</th></tr></thead>
+<tbody>
+<tr><td><code>CPICNT</code></td><td>CPI (cycles per instruction) above 1 — i.e. extra cycles spent on multi-cycle instructions</td></tr>
+<tr><td><code>EXCCNT</code></td><td>Cycles spent in exception entry, exit, and return</td></tr>
+<tr><td><code>SLEEPCNT</code></td><td>Cycles spent in WFI/WFE sleep</td></tr>
+<tr><td><code>LSUCNT</code></td><td>Cycles where load/store unit was stalled</td></tr>
+<tr><td><code>FOLDCNT</code></td><td>Folded instructions (zero-cycle predicates collapsed)</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">measure_stalls.c</span></div>
+<pre><span class="t">void</span> <span class="n">enable_dwt_counters</span><span class="p">(</span><span class="t">void</span><span class="p">) {</span>
+    CoreDebug<span class="p">-&gt;</span>DEMCR <span class="p">|=</span> CoreDebug_DEMCR_TRCENA_Msk<span class="p">;</span>
+    DWT<span class="p">-&gt;</span>CTRL <span class="p">|=</span> DWT_CTRL_CYCCNTENA_Msk
+              <span class="p">|</span>  DWT_CTRL_CPIEVTENA_Msk
+              <span class="p">|</span>  DWT_CTRL_EXCEVTENA_Msk
+              <span class="p">|</span>  DWT_CTRL_LSUEVTENA_Msk
+              <span class="p">|</span>  DWT_CTRL_FOLDEVTENA_Msk<span class="p">;</span>
+<span class="p">}</span>
+
+<span class="t">void</span> <span class="n">print_dwt_stats</span><span class="p">(</span><span class="t">void</span><span class="p">) {</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"CPI extra:  %u\n"</span><span class="p">,</span> <span class="p">(</span><span class="t">unsigned</span><span class="p">)</span>DWT<span class="p">-&gt;</span>CPICNT<span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"Exc cycles: %u\n"</span><span class="p">,</span> <span class="p">(</span><span class="t">unsigned</span><span class="p">)</span>DWT<span class="p">-&gt;</span>EXCCNT<span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"LSU stalls: %u\n"</span><span class="p">,</span> <span class="p">(</span><span class="t">unsigned</span><span class="p">)</span>DWT<span class="p">-&gt;</span>LSUCNT<span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"Folded:     %u\n"</span><span class="p">,</span> <span class="p">(</span><span class="t">unsigned</span><span class="p">)</span>DWT<span class="p">-&gt;</span>FOLDCNT<span class="p">);</span>
+<span class="p">}</span>
+</pre>
+</div>
+
+<p>These counters are 8-bit each and overflow quickly, so you sample them on every iteration of a benchmark. They are invaluable for finding the actual bottleneck — is the inner loop waiting on memory? Spending time in interrupt overhead? You can see it directly.</p>
+
+<h3>Interview Questions</h3>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">How does pipelining affect interrupt latency on Cortex-M?</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p>Pipelining means multiple instructions are partially executed at any moment. When an interrupt fires, the core must reach a clean boundary before vectoring to the handler — finishing or abandoning in-flight instructions, pushing the exception frame, fetching the vector, and starting the handler.</p>
+<p>On Cortex-M3 and M4 the published worst-case latency is <strong>12 cycles</strong> from interrupt assertion to first handler instruction. This breaks down roughly as:</p>
+<ul>
+<li>Detecting the interrupt and arbitrating priority (~2 cycles)</li>
+<li>Finishing the current instruction or aborting if interruptible (load/store multiple)</li>
+<li>Stacking R0-R3, R12, LR, PC, xPSR (8 words, 8 cycles)</li>
+<li>Fetching the vector table entry (~1 cycle, can be pipelined with stacking)</li>
+<li>Starting the handler</li>
+</ul>
+<p>On Cortex-M7 with its deeper pipeline and branch predictor, typical latency is similar but worst-case can be longer because of branch misprediction in critical pre-interrupt instructions. For hard-real-time work, always measure with DWT and design for worst case.</p>
+</div>
+</div>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">Cortex-M0 has no branch predictor — how does it handle branches?</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p>Cortex-M0 simply <strong>flushes the pipeline</strong> on every taken branch. The 3-stage pipeline means two instructions behind the branch were already fetched and decoded but must be discarded.</p>
+<p>The penalty is approximately <strong>3 cycles per taken branch</strong>. Untaken branches (fallthrough) have no penalty — the pipeline keeps fetching sequentially.</p>
+<p>This is why M0 code is more sensitive to branch density than M4. Tight unrolled loops without internal branches run very close to peak throughput; code with many <code>if/else</code> chains runs much slower. DSP libraries for M0 are deliberately structured to minimize branches, often using conditional MOV or arithmetic tricks instead of explicit branches where possible.</p>
+</div>
+</div>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">You measure a function with DWT-&gt;CYCCNT and get wildly inconsistent results between runs. What could be going on?</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p>Several common sources of variance:</p>
+<ul>
+<li><strong>Interrupts firing during the measurement.</strong> SysTick alone adds dozens of cycles. Disable interrupts (or at least mask irrelevant ones) for the measured region.</li>
+<li><strong>Flash wait states and cache behavior.</strong> First execution after reset hits cold flash and the ART/cache. Subsequent runs are faster. Always run a warm-up iteration before measuring.</li>
+<li><strong>Branch prediction state.</strong> On M7, the first run through new code mispredicts; subsequent runs are faster.</li>
+<li><strong>DMA traffic on the bus matrix.</strong> If DMA is moving data while you're executing, bus contention adds cycles.</li>
+<li><strong>Different code alignment between builds.</strong> The compiler may place the function at a different alignment, affecting prefetch behavior.</li>
+<li><strong>Compiler optimization eliding the work.</strong> If your benchmark's result isn't used, the compiler may discard the whole computation. Always sink the result to a volatile or pass it out.</li>
+</ul>
+<p>Best practice: disable interrupts, run a warm-up, take the minimum of N runs, and verify against the disassembly that the work you're measuring is actually emitted.</p>
+</div>
+</div>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">Why does the PC register on Cortex-M read as the current instruction address plus 4?</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p>Because of the three-stage pipeline. While an instruction is in the Execute stage, the Fetch stage has already retrieved the instruction <em>two slots ahead</em>. The PC visible to the executing instruction therefore points to the instruction being fetched, not to the one executing.</p>
+<p>For Thumb-2 code where most instructions are 2 bytes, "two slots ahead" is 4 bytes. So <code>PC = current_instruction_address + 4</code>.</p>
+<p>This is mostly invisible — instructions like <code>LDR Rn, [PC, #offset]</code> work correctly because the assembler and compiler account for the +4 offset automatically. But if you hand-write assembly that does arithmetic on PC, or you're reading a faulted PC from the stacked exception frame to find where a fault occurred, you need to subtract the offset.</p>
+<p>For exception analysis specifically: the stacked PC points to the instruction that <em>would have executed next</em>, not the one that faulted. To find the faulting instruction, you typically subtract 2 or 4 bytes (depending on the instruction encoding length) — or use the BFAR/MMFAR fault address registers when available.</p>
+</div>
+</div>
+
+  </article>
+</section>
+
+<div class="topic-divider"><hr></div>
+
+
+<section id="topic-05" class="topic-anchor">
+  <div class="topic-banner">
+    <div class="topic-banner-inner">
+      <div class="topic-banner-num">05</div>
+      <div>
+        <div class="topic-banner-meta"><span class="id">Topic 05</span> · Foundation</div>
+      </div>
+    </div>
+  </div>
+
+  <article class="article">
+    <div class="article-meta">
+      <span class="topic-id">Handbook 02</span>
+      <span class="dot">·</span>
+      <span>Topic 05</span>
+      <span class="dot">·</span>
+      <span>Foundation</span>
+    </div>
+    <h2>Cache Hierarchy, <span class="em">MMU & TLB</span></h2>
+    <p class="lede">Caches turn slow external memory into something almost as fast as the CPU. The MMU translates virtual addresses to physical ones, enabling protected processes and virtual memory. Both are essential to Cortex-A, optional on Cortex-M7, and absent on smaller M cores — which is why understanding them changes how you write portable firmware.</p>
+    
+<h3>Why caches exist</h3>
+
+<p>CPU clocks have risen by orders of magnitude over four decades. DRAM access times have barely changed. The gap is enormous: a modern Cortex-A can execute hundreds of instructions in the time it takes to read one byte from DDR. Caches close that gap by keeping recently-used data and instructions in small, very fast on-chip memory.</p>
+
+<div class="diagram">
+<div class="diagram-head">Memory hierarchy on a typical Cortex-A SoC</div>
+<pre>
+   Register file       0 cycle      ~100 bytes
+       │
+       ▼
+   L1 I-cache          1-3 cycles   16-64 KB
+   L1 D-cache          1-3 cycles   16-64 KB
+       │
+       ▼
+   L2 cache (unified)  ~10 cycles   256 KB - 2 MB
+       │
+       ▼
+   External DDR        ~100 cycles  Gigabytes
+       │
+       ▼
+   eMMC / SD card      thousands    Tens of GB
+
+   <span class="hi">Each level is roughly 10x slower and 10x larger than the one above.</span>
+</pre>
+</div>
+
+<p>On Cortex-M7, you typically have L1 caches only — there is no L2 in most M-class chips. On Cortex-A, you have L1 plus L2, and on multi-core designs an L3 shared between cores.</p>
+
+<h3>Cache organization</h3>
+
+<p>A cache is divided into <strong>cache lines</strong>, typically 32 or 64 bytes each. When the CPU accesses any byte, the cache reads or writes the entire line containing it. This is why <em>spatial locality</em> matters — accessing data sequentially is much faster than scattered access.</p>
+
+<p>Caches are organized by <em>associativity</em>:</p>
+
+<ul>
+<li><strong>Direct-mapped:</strong> each address has exactly one slot in the cache. Simple but suffers from conflicts.</li>
+<li><strong>N-way set associative:</strong> each address can live in any of N slots. Cortex-M7 D-cache is typically 4-way; Cortex-A is often 8-way.</li>
+<li><strong>Fully associative:</strong> any address can live anywhere. Used only for small structures like TLBs.</li>
+</ul>
+
+<div class="diagram">
+<div class="diagram-head">Cache line lookup (4-way set associative)</div>
+<pre>
+   32-bit address:  [ Tag : 20 bits ][ Set : 7 bits ][ Offset : 5 bits ]
+
+   - Offset selects byte within the 32-byte line
+   - Set indexes which of 128 sets to check
+   - Tag is compared against all 4 ways in that set
+
+       Set 0   ┌──── way 0 ────┬──── way 1 ────┬──── way 2 ────┬──── way 3 ────┐
+               │ V  D  Tag  Data│ V  D  Tag  Data│ V  D  Tag  Data│ V  D  Tag  Data│
+       Set 1   ├────────────────┼────────────────┼────────────────┼────────────────┤
+        ...    │                │                │                │                │
+       Set 127 ├────────────────┼────────────────┼────────────────┼────────────────┤
+               └────────────────┴────────────────┴────────────────┴────────────────┘
+
+   V = Valid bit, D = Dirty bit (modified vs main memory)
+   On hit: data returned in 1-3 cycles.
+   On miss: line evicted (write-back if dirty), new line fetched.
+</pre>
+</div>
+
+<h3>Write-back vs write-through</h3>
+
+<p>When the CPU writes to a cached line, the cache has two choices:</p>
+
+<ul>
+<li><strong>Write-through:</strong> every write propagates immediately to main memory. Simple, but slow — every write incurs the full memory latency. Used for memory-mapped peripherals and sometimes for safety-critical caches.</li>
+<li><strong>Write-back:</strong> writes hit the cache only. The line is marked <em>dirty</em>. When evicted, the entire dirty line is written back to memory. Much faster but creates coherency problems with DMA.</li>
+</ul>
+
+<div class="callout warn">
+<div class="callout-label">Gotcha — DMA and write-back cache</div>
+<p>If the CPU writes to a buffer that DMA will transmit, the data lives in the dirty cache line. Until the line is flushed, DMA reads stale data from main memory. Always <code>SCB_CleanDCache_by_Addr()</code> before starting a DMA-out transfer, and <code>SCB_InvalidateDCache_by_Addr()</code> after a DMA-in transfer. This is the most common bug in Cortex-M7 firmware.</p>
+</div>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">dma_cache_safe.c</span></div>
+<pre><span class="k">#include</span> <span class="s">"core_cm7.h"</span>
+
+<span class="c">/* DMA buffer must be 32-byte aligned (cache line size on M7)    */</span>
+<span class="c">/* and its size must be a multiple of 32, otherwise neighbours    */</span>
+<span class="c">/* in the same line get corrupted by clean/invalidate.            */</span>
+<span class="t">__attribute__</span><span class="p">((</span><span class="n">aligned</span><span class="p">(</span><span class="s">32</span><span class="p">)))</span>
+<span class="t">uint8_t</span> tx_buffer<span class="p">[</span><span class="s">256</span><span class="p">];</span>
+
+<span class="t">void</span> <span class="n">dma_start_tx</span><span class="p">(</span><span class="t">size_t</span> len<span class="p">) {</span>
+    <span class="c">/* Make sure CPU's cached writes hit main memory               */</span>
+    SCB_CleanDCache_by_Addr<span class="p">((</span><span class="t">uint32_t</span> <span class="p">*)</span>tx_buffer<span class="p">,</span> len<span class="p">);</span>
+
+    <span class="c">/* Now safe to tell DMA to read from tx_buffer                 */</span>
+    DMA_Stream<span class="p">-&gt;</span>PAR <span class="p">= (</span><span class="t">uint32_t</span><span class="p">)&amp;</span>USART<span class="p">-&gt;</span>DR<span class="p">;</span>
+    DMA_Stream<span class="p">-&gt;</span>M0AR <span class="p">= (</span><span class="t">uint32_t</span><span class="p">)</span>tx_buffer<span class="p">;</span>
+    DMA_Stream<span class="p">-&gt;</span>NDTR <span class="p">=</span> len<span class="p">;</span>
+    DMA_Stream<span class="p">-&gt;</span>CR  <span class="p">|=</span> DMA_SxCR_EN<span class="p">;</span>
+<span class="p">}</span>
+
+<span class="t">__attribute__</span><span class="p">((</span><span class="n">aligned</span><span class="p">(</span><span class="s">32</span><span class="p">)))</span>
+<span class="t">uint8_t</span> rx_buffer<span class="p">[</span><span class="s">256</span><span class="p">];</span>
+
+<span class="t">void</span> <span class="n">dma_complete_rx</span><span class="p">(</span><span class="t">size_t</span> len<span class="p">) {</span>
+    <span class="c">/* Discard cached copies so next read sees fresh DMA data      */</span>
+    SCB_InvalidateDCache_by_Addr<span class="p">((</span><span class="t">uint32_t</span> <span class="p">*)</span>rx_buffer<span class="p">,</span> len<span class="p">);</span>
+
+    process_buffer<span class="p">(</span>rx_buffer<span class="p">,</span> len<span class="p">);</span>
+<span class="p">}</span>
+</pre>
+</div>
+
+<h3>The MMU — virtual memory and protection</h3>
+
+<p>Where the MPU on Cortex-M enforces access rules on small numbers of regions, the MMU on Cortex-A provides <strong>full virtual memory</strong>: every memory access goes through a translation step that maps virtual addresses (what the program sees) to physical addresses (what the DRAM actually has).</p>
+
+<div class="diagram">
+<div class="diagram-head">MMU translation flow</div>
+<pre>
+   CPU issues virtual address: 0x76543210
+        │
+        ▼
+   ┌─────────────────────────┐
+   │      TLB lookup         │      Translation Lookaside Buffer
+   │  (cached translations)  │      ─ small, very fast
+   └─────────┬───────────────┘
+             │
+        hit  │  miss
+             │     │
+             ▼     ▼
+       physical   ┌──────────────────────────┐
+        address   │   Page table walk        │
+             │   │  (read L1, L2, ... PTE   │
+             │   │   from main memory)      │
+             │   └────────────┬─────────────┘
+             │                │
+             ▼                ▼
+       To cache /        TLB updated,
+       memory subsystem  physical address used
+</pre>
+</div>
+
+<p>The translation gives you three powerful capabilities:</p>
+
+<ul>
+<li><strong>Per-process address spaces.</strong> Each process sees the same virtual addresses (e.g., code at 0x00400000) but they map to different physical pages. Processes can't accidentally access each other's memory.</li>
+<li><strong>Memory protection.</strong> The page table entry contains permission bits (read, write, execute, user/kernel). Violations cause faults the kernel handles.</li>
+<li><strong>Demand paging and swapping.</strong> A page can be marked as not-present; access faults; kernel loads it from disk; resumes execution. This is how Linux supports more virtual memory than physical RAM.</li>
+</ul>
+
+<h3>The TLB — caching translations</h3>
+
+<p>Walking the page table on every memory access would be devastating. A page walk on ARMv8-A may take 5+ memory references just to translate one virtual address. The <strong>Translation Lookaside Buffer (TLB)</strong> is a small, fully-associative cache of recent translations.</p>
+
+<p>A typical Cortex-A TLB has 32-256 entries. When the CPU issues a virtual address, the TLB checks all its entries in parallel. A hit gives the physical address in one cycle. A miss triggers a page walk and inserts the result into the TLB, possibly evicting an older entry.</p>
+
+<div class="callout key">
+<div class="callout-label">Key Idea — context switches and TLB flushes</div>
+<p>When the OS switches to a different process with a different page table, all TLB entries for the old process become invalid (their virtual-to-physical mappings no longer apply). Historically this required a full TLB flush on every context switch — expensive. Modern ARM cores tag TLB entries with an <em>Address Space ID (ASID)</em> so multiple processes' translations coexist in the TLB. Only the kernel-global pages need flushing, and most user-space translations survive context switches.</p>
+</div>
+
+<h3>The MPU — protection without translation</h3>
+
+<p>Cortex-M doesn't have an MMU because microcontrollers don't run general-purpose OSes that need virtual memory. Instead, Cortex-M (M3 and up) provides an MPU — a Memory Protection Unit — that defines 8 or 16 regions in the physical address space and enforces access rules on each.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Aspect</th><th>MMU (Cortex-A)</th><th>MPU (Cortex-M)</th></tr></thead>
+<tbody>
+<tr><td>Address translation</td><td>Yes (virtual → physical)</td><td>No (physical only)</td></tr>
+<tr><td>Granularity</td><td>4 KB pages (or larger)</td><td>32 bytes to gigabytes per region</td></tr>
+<tr><td>Number of regions</td><td>Effectively unlimited (millions of pages)</td><td>8 or 16</td></tr>
+<tr><td>Page tables</td><td>In main memory, walked on TLB miss</td><td>None — configured in CPU registers</td></tr>
+<tr><td>Process isolation</td><td>Each process gets unique mapping</td><td>Reconfigure region table per task</td></tr>
+<tr><td>Cost to context switch</td><td>Change page table pointer, possibly flush TLB</td><td>Reload region registers (~16 stores)</td></tr>
+<tr><td>Typical use</td><td>Full OS (Linux, Android, QNX)</td><td>RTOS task isolation, stack guards</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">mpu_stack_guard.c</span></div>
+<pre><span class="c">/* Cortex-M MPU: use one region as a stack-bottom guard for a task.   */</span>
+<span class="c">/* If the task's stack overflows into this region, a MemManage fault  */</span>
+<span class="c">/* fires immediately rather than corrupting unrelated memory.         */</span>
+
+<span class="t">void</span> <span class="n">mpu_setup_stack_guard</span><span class="p">(</span><span class="t">uint32_t</span> guard_addr<span class="p">) {</span>
+    <span class="c">/* Disable MPU while configuring */</span>
+    MPU<span class="p">-&gt;</span>CTRL <span class="p">=</span> <span class="s">0</span><span class="p">;</span>
+
+    <span class="c">/* Select region 0 */</span>
+    MPU<span class="p">-&gt;</span>RNR <span class="p">=</span> <span class="s">0</span><span class="p">;</span>
+
+    <span class="c">/* Base address must be aligned to region size           */</span>
+    <span class="c">/* 32 bytes = smallest MPU region                        */</span>
+    MPU<span class="p">-&gt;</span>RBAR <span class="p">=</span> guard_addr <span class="p">&amp;</span> <span class="s">~0x1F</span><span class="p">;</span>
+
+    <span class="c">/* Size = 32 bytes (SIZE = 4), no access permitted        */</span>
+    MPU<span class="p">-&gt;</span>RASR <span class="p">= (</span><span class="s">0</span> <span class="p">&lt;&lt;</span> <span class="s">24</span><span class="p">)   </span><span class="c">/* AP = No access      */</span>
+              <span class="p">| (</span><span class="s">4</span> <span class="p">&lt;&lt;</span> <span class="s">1</span><span class="p">)    </span><span class="c">/* SIZE = 32 bytes     */</span>
+              <span class="p">|</span> MPU_RASR_ENABLE_Msk<span class="p">;</span>
+
+    <span class="c">/* Enable MPU with default background map for kernel */</span>
+    MPU<span class="p">-&gt;</span>CTRL <span class="p">=</span> MPU_CTRL_PRIVDEFENA_Msk
+              <span class="p">|</span> MPU_CTRL_ENABLE_Msk<span class="p">;</span>
+
+    __DSB<span class="p">();</span> __ISB<span class="p">();</span>
+<span class="p">}</span>
+</pre>
+</div>
+
+<h3>What this means for Cortex-M firmware</h3>
+
+<p>Most Cortex-M firmware never thinks about cache because most M cores don't have one. But on M7-based chips like STM32H7 and i.MX RT, you must:</p>
+
+<ul>
+<li>Mark DMA buffers as 32-byte aligned, multiples of 32 bytes long.</li>
+<li>Clean the cache before DMA-out, invalidate before DMA-in.</li>
+<li>Consider placing high-bandwidth buffers in tightly-coupled memory (TCM) which bypasses the cache.</li>
+<li>Set up MPU regions for shared memory between cache and DMA to be non-cacheable if you can't manage clean/invalidate explicitly.</li>
+</ul>
+
+<h3>Interview Questions</h3>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">What is the difference between write-back and write-through cache, and which does Cortex-M7 use by default?</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p><strong>Write-through</strong> propagates every CPU write to main memory immediately. Simple to reason about — main memory always reflects the latest write — but slow because every write incurs the full memory latency.</p>
+<p><strong>Write-back</strong> only updates the cache line and marks it dirty. The write to main memory is deferred until the line is evicted. Much faster — most writes never touch DRAM — but main memory becomes stale until eviction.</p>
+<p>Cortex-M7's D-cache is configurable per MPU region. The default region type for SRAM is <em>Normal, Cacheable, Write-Back, Write-Allocate</em>. Peripheral regions are <em>Device</em> — never cached at all.</p>
+<p>You should switch a region to write-through or non-cacheable when:</p>
+<ul>
+<li>DMA reads from or writes to that region and you can't easily clean/invalidate.</li>
+<li>You want predictable write latency (for real-time control).</li>
+<li>Multi-core coherency is needed and the chip doesn't have a coherent interconnect.</li>
+</ul>
+</div>
+</div>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">Explain what an MPU is and how it differs from an MMU.</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p>Both enforce memory access rules, but they're architecturally different.</p>
+<p>An <strong>MMU</strong> translates virtual addresses to physical addresses using page tables stored in memory. Each process has its own page table, so processes can have private virtual address spaces that map to disjoint physical memory. The MMU also enforces permission bits (read/write/execute, user/kernel) per page. This is what makes modern operating systems possible.</p>
+<p>An <strong>MPU</strong> does no translation. The CPU issues physical addresses directly. The MPU has a small number of programmable regions (typically 8 or 16) that define access rules — readable, writable, executable, privileged-only — for physical address ranges. When an access violates the rules, a fault fires.</p>
+<p>MMU is for general-purpose computing with virtual memory and process isolation. MPU is for embedded systems where you want lightweight protection — preventing a task from corrupting another task's stack, marking flash as read-only at runtime, catching null pointer dereferences — without the cost and complexity of an MMU.</p>
+</div>
+</div>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">My DMA transfer on STM32H7 (Cortex-M7) sometimes sends garbage data. What is likely happening?</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p>Classic cache coherency bug. On Cortex-M7 the D-cache is write-back by default. When the CPU prepares a buffer and tells DMA to send it:</p>
+<ol>
+<li>The CPU's writes update the L1 D-cache lines but mark them dirty — main memory is not yet updated.</li>
+<li>DMA reads from main memory and gets the <strong>stale</strong> contents — whatever was there before.</li>
+<li>Garbage gets transmitted.</li>
+</ol>
+<p>The fix is to <strong>clean the D-cache</strong> for the buffer address range before starting the DMA:</p>
+<pre style="background:#0e0c08;padding:14px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#b8ad94;margin:12px 0">
+SCB_CleanDCache_by_Addr((uint32_t *)tx_buffer, buffer_size);
+HAL_UART_Transmit_DMA(&huart1, tx_buffer, buffer_size);
+</pre>
+<p>For DMA-in (peripheral to memory) the symptom is different — the CPU reads stale cached data instead of the freshly-DMA'd buffer. The fix is <strong>invalidate D-cache</strong> after the DMA completes, before reading:</p>
+<pre style="background:#0e0c08;padding:14px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#b8ad94;margin:12px 0">
+SCB_InvalidateDCache_by_Addr((uint32_t *)rx_buffer, buffer_size);
+process(rx_buffer);
+</pre>
+<p>Also critical: the buffer must be <strong>32-byte aligned and a multiple of 32 bytes</strong> (the cache line size), or clean/invalidate operations will affect adjacent variables and corrupt them.</p>
+</div>
+</div>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">What is a TLB and why does its size matter?</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p>The <strong>Translation Lookaside Buffer</strong> is a cache of recent virtual-to-physical address translations. Without it, every memory access would require walking the page tables — multiple dependent memory reads — which would be catastrophically slow.</p>
+<p>The TLB is small (32 to a few hundred entries) and fully associative. A TLB hit returns the translation in 1 cycle. A TLB miss triggers a page walk that can take 10-50 cycles on a modern Cortex-A.</p>
+<p>TLB size matters because each entry maps one page — typically 4 KB. With 64 TLB entries you can cover at most 256 KB of working set before missing. Programs with large working sets (databases, image processing) suffer TLB thrashing where translations keep getting evicted and re-walked.</p>
+<p>ARM provides several mitigations: huge pages (2 MB or 1 GB instead of 4 KB) so one TLB entry covers more memory, ASID tagging so multiple processes share the TLB without flushing on context switch, and hardware prefetchers that anticipate page walks.</p>
+<p>For embedded engineers working on Linux-based products (Cortex-A), TLB pressure is a real performance factor for memory-intensive workloads and can be improved by configuring the kernel to use huge pages for known hot regions.</p>
+</div>
+</div>
+
+<div class="qa">
+<div class="qa-label">Interview Question</div>
+<p class="qa-question">Why is "spatial locality" important for cache performance?</p>
+<div class="qa-answer">
+<div class="qa-answer-label">Answer</div>
+<p>Caches fetch entire <strong>cache lines</strong> (32 or 64 bytes), not individual bytes. When you access one byte, the cache loads the whole line containing it. Subsequent accesses to nearby bytes are cache hits and almost free.</p>
+<p>Spatial locality is the property of accessing nearby addresses close together in time. Code with good spatial locality runs much faster than code that scatters access across memory:</p>
+<ul>
+<li><strong>Iterating a contiguous array</strong> hits every cache line once, then reuses it for 8-16 elements (assuming 32-byte line, 4-byte int). Near-perfect cache utilization.</li>
+<li><strong>Iterating a linked list</strong> randomly placed in memory misses on nearly every node — every traversal pays full memory latency. Often 10-100x slower than the array version.</li>
+<li><strong>Iterating a 2D array row by row</strong> in row-major C arrays: good locality. Column by column: terrible locality, because columns are non-contiguous in memory.</li>
+</ul>
+<p>This is why "cache-friendly data structures" are a real engineering concern — even when the asymptotic complexity is the same, layout that respects spatial locality can make code run an order of magnitude faster.</p>
+</div>
+</div>
+
+  </article>
+</section>
+
+<div class="topic-divider"><hr></div>
+
+
+<nav class="page-nav">
+  <a href="HB1.html" class="nav-prev">
+    <div class="nav-label">Previous · HB1</div>
+    <div class="nav-title">Electronics & Digital Hardware Foundations</div>
+  </a>
+  <a href="HB3.html" class="nav-next">
+    <div class="nav-label">Next · HB3</div>
+    <div class="nav-title">Embedded C Programming Mastery</div>
+  </a>
+</nav>
+
+<footer class="footer">
+  <span>Handbook 02 · Foundation</span>
+  <span class="footer-mark">§</span>
+  <span class="right"><a href="index.html">Series Index</a></span>
+</footer>
+
+<a href="#" class="scroll-top" aria-label="Back to top">↑</a>
+
+</div>
+<script>
+window.addEventListener('scroll', () => {
+  const btn = document.querySelector('.scroll-top');
+  if (window.scrollY > 800) btn.classList.add('visible');
+  else btn.classList.remove('visible');
+});
+</script>
+</body>
+</html>

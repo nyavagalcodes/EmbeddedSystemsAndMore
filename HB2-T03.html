@@ -1,0 +1,1755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HB2 · Topic 03 · Memory Map, Bus Matrix &amp; <span class='em'>AHB / APB</span> — Embedded Systems Mastery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,200;0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,200;1,9..144,300;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #14110d;
+  --bg-2: #1a1612;
+  --bg-3: #221d17;
+  --bg-card: #18140f;
+  --fg: #e8dfc9;
+  --fg-2: #b8ad94;
+  --fg-3: #7d735f;
+  --fg-4: #4e4737;
+  --gold: #c9a961;
+  --gold-bright: #d9bb74;
+  --gold-deep: #9e8649;
+  --gold-soft: rgba(201, 169, 97, 0.12);
+  --line: rgba(232, 223, 201, 0.07);
+  --line-strong: rgba(232, 223, 201, 0.14);
+  --serif: "Fraunces", "Cormorant Garamond", Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "kern", "liga", "onum";
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Subtle paper-grain texture overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.45 0 0 0 0 0.35 0 0 0 0.06 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  opacity: 0.6;
+  z-index: 0;
+  mix-blend-mode: overlay;
+}
+
+/* Soft vignette */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(201, 169, 97, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 40% at 50% 100%, rgba(20, 17, 13, 0.5) 0%, transparent 50%);
+  z-index: 0;
+}
+
+.page { position: relative; z-index: 1; }
+
+::selection { background: var(--gold); color: var(--bg); }
+
+/* ============================================================
+   TOP BAR
+   ============================================================ */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 20px 32px;
+  background: rgba(20, 17, 13, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+.topbar .brand {
+  color: var(--gold);
+  font-weight: 500;
+  text-decoration: none;
+  letter-spacing: 0.24em;
+}
+.topbar .nav-right {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  color: var(--fg-3);
+}
+.topbar .nav-right a {
+  color: var(--fg-3);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.topbar .nav-right a:hover { color: var(--gold); }
+.topbar .sep { color: var(--fg-4); }
+
+/* ============================================================
+   HERO — main index
+   ============================================================ */
+.hero {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 120px 40px 80px;
+  position: relative;
+}
+
+/* The eyebrow with a thin gold rule */
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 56px;
+}
+.hero-eyebrow::before {
+  content: "";
+  width: 40px;
+  height: 1px;
+  background: var(--gold);
+}
+
+/* Refined hero title — single line treatment, italic emphasis inline */
+.hero h1 {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(48px, 8vw, 108px);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  margin: 0 0 32px;
+  color: var(--fg);
+  max-width: 14ch;
+}
+.hero h1 .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+
+.hero-sub {
+  font-family: var(--serif);
+  font-size: clamp(18px, 2vw, 22px);
+  line-height: 1.55;
+  color: var(--fg-2);
+  max-width: 580px;
+  margin: 0 0 64px;
+  font-weight: 400;
+}
+
+/* Stats — refined, single row, hairline rules */
+.hero-stats {
+  display: flex;
+  gap: 64px;
+  padding: 28px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  max-width: 600px;
+  flex-wrap: wrap;
+}
+.hero-stat-num {
+  font-family: var(--serif);
+  font-size: 42px;
+  font-weight: 300;
+  color: var(--gold);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-feature-settings: "lnum", "tnum";
+}
+.hero-stat-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg-3);
+  margin-top: 10px;
+}
+
+/* ============================================================
+   SECTION DIVIDER — thin refined rule with label
+   ============================================================ */
+.divider {
+  max-width: 1180px;
+  margin: 80px auto 0;
+  padding: 0 40px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 32px;
+  align-items: center;
+}
+.divider .label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.32em;
+  color: var(--gold);
+}
+.divider .label::before {
+  content: "§";
+  margin-right: 10px;
+  color: var(--fg-3);
+}
+.divider .line {
+  height: 1px;
+  background: linear-gradient(to right, var(--gold-deep) 0%, var(--line) 60%);
+}
+.divider .count {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-3);
+  letter-spacing: 0.18em;
+}
+
+/* ============================================================
+   TIER OVERVIEW — refined, all same gold, distinguished by typography
+   ============================================================ */
+.tiers {
+  max-width: 1180px;
+  margin: 32px auto 0;
+  padding: 0 40px;
+}
+.tiers-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.tier-block {
+  padding: 36px 28px;
+  border-right: 1px solid var(--line);
+  position: relative;
+}
+.tier-block:last-child { border-right: none; }
+
+.tier-roman {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 38px;
+  font-weight: 300;
+  color: var(--gold);
+  opacity: 0.7;
+  line-height: 1;
+  margin-bottom: 18px;
+  font-feature-settings: "lnum";
+}
+.tier-name {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.tier-vols {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--fg-3);
+  letter-spacing: 0.16em;
+  margin-bottom: 18px;
+}
+.tier-desc {
+  font-family: var(--serif);
+  font-size: 14px;
+  color: var(--fg-2);
+  line-height: 1.55;
+  font-style: italic;
+}
+
+/* ============================================================
+   BOOK LIST — refined, restrained, premium
+   ============================================================ */
+.books-section {
+  max-width: 1180px;
+  margin: 32px auto 0;
+  padding: 0 40px 100px;
+}
+
+.books-grid {
+  border-top: 1px solid var(--line);
+}
+
+.book {
+  display: grid;
+  grid-template-columns: 90px 1fr 160px;
+  gap: 40px;
+  align-items: center;
+  padding: 40px 12px;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+  transition: background 0.25s ease;
+}
+
+.book:hover {
+  background: linear-gradient(to right, var(--gold-soft), transparent 60%);
+}
+.book:hover .book-num { color: var(--gold); }
+.book:hover .book-arrow { color: var(--gold); gap: 14px; }
+
+.book-num {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 56px;
+  line-height: 1;
+  color: var(--fg-4);
+  letter-spacing: -0.02em;
+  font-feature-settings: "lnum", "tnum";
+  transition: color 0.25s ease;
+}
+
+.book-main { min-width: 0; }
+
+.book-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--fg-3);
+  flex-wrap: wrap;
+}
+.book-meta .tier-tag {
+  color: var(--gold);
+  font-weight: 600;
+}
+.book-meta .dot {
+  color: var(--fg-4);
+}
+
+.book-title {
+  font-family: var(--serif);
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  margin: 0 0 12px;
+  color: var(--fg);
+}
+.book-title .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+
+.book-tagline {
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--fg-2);
+  margin: 0;
+  max-width: 580px;
+  font-style: italic;
+}
+
+.book-side {
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--fg-3);
+}
+.book-side .topics-count {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 32px;
+  font-weight: 300;
+  color: var(--fg-2);
+  display: block;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.book-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  color: var(--fg-3);
+  transition: all 0.25s ease;
+}
+.book-arrow::after { content: "→"; }
+
+/* ============================================================
+   BOOK PAGE — individual handbook
+   ============================================================ */
+.book-hero {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 80px 40px 60px;
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+
+.back-link {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--fg-3);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 56px;
+  transition: all 0.2s ease;
+}
+.back-link::before { content: "←"; font-size: 13px; }
+.back-link:hover { color: var(--gold); gap: 16px; }
+
+.book-hero-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 60px;
+  align-items: flex-end;
+}
+
+.book-hero-meta {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 24px;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg-3);
+  flex-wrap: wrap;
+}
+.book-hero-meta .vol {
+  color: var(--gold);
+  font-weight: 600;
+}
+.book-hero-meta .dot { color: var(--fg-4); }
+
+.book-hero h1 {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(40px, 6vw, 76px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  margin: 0 0 24px;
+  color: var(--fg);
+}
+.book-hero h1 .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+
+.book-hero .tagline {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(17px, 1.8vw, 20px);
+  line-height: 1.55;
+  color: var(--fg-2);
+  max-width: 660px;
+  margin: 0;
+}
+
+/* Discreet large numeral on the side */
+.book-hero-num {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 200;
+  font-size: clamp(120px, 14vw, 180px);
+  line-height: 0.85;
+  color: var(--gold);
+  opacity: 0.12;
+  letter-spacing: -0.04em;
+  margin: 0;
+  user-select: none;
+  font-feature-settings: "lnum", "tnum";
+}
+
+/* ============================================================
+   TOPICS LIST
+   ============================================================ */
+.topics-section {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 60px 40px 40px;
+}
+
+.topics-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 32px;
+  align-items: center;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.topics-header .label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.32em;
+  color: var(--gold);
+}
+.topics-header .label::before {
+  content: "§";
+  margin-right: 10px;
+  color: var(--fg-3);
+}
+.topics-header .line {
+  height: 1px;
+  background: var(--line);
+}
+.topics-header .count {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-3);
+  letter-spacing: 0.18em;
+}
+
+.topic {
+  display: grid;
+  grid-template-columns: 80px 1fr 120px;
+  gap: 32px;
+  padding: 26px 12px;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+  color: inherit;
+  align-items: center;
+  transition: background 0.25s ease;
+}
+.topic:hover {
+  background: linear-gradient(to right, var(--gold-soft), transparent 70%);
+}
+.topic:hover .topic-num { color: var(--gold); }
+.topic:hover .topic-title { color: var(--gold-bright); }
+
+.topic-num {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 38px;
+  line-height: 1;
+  color: var(--fg-4);
+  letter-spacing: -0.02em;
+  font-feature-settings: "lnum", "tnum";
+  transition: color 0.25s ease;
+}
+
+.topic-title {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(18px, 2vw, 22px);
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+  margin: 0 0 6px;
+  color: var(--fg);
+  transition: color 0.25s ease;
+}
+
+.topic-desc {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--fg-2);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.topic-status {
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--fg-4);
+}
+.topic-status::after { content: "  →"; }
+
+/* ============================================================
+   PAGE NAVIGATION
+   ============================================================ */
+.page-nav {
+  max-width: 1180px;
+  margin: 60px auto 0;
+  padding: 32px 40px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.page-nav a, .page-nav .placeholder {
+  text-decoration: none;
+  color: inherit;
+  padding: 32px 28px;
+  border: 1px solid var(--line);
+  display: block;
+  transition: all 0.25s ease;
+}
+.page-nav a:first-child { border-right: none; }
+.page-nav a:hover {
+  background: var(--gold-soft);
+  border-color: var(--gold-deep);
+  position: relative;
+  z-index: 2;
+}
+
+.nav-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--fg-3);
+  margin-bottom: 14px;
+  display: block;
+}
+.nav-prev .nav-label::before { content: "← "; }
+.nav-next { text-align: right; }
+.nav-next .nav-label::after { content: " →"; }
+
+.nav-title {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: var(--fg);
+}
+.page-nav a:hover .nav-title { color: var(--gold); }
+.page-nav a:hover .nav-label { color: var(--gold); }
+
+.placeholder {
+  opacity: 0.3;
+  pointer-events: none;
+}
+.placeholder .nav-title {
+  color: var(--fg-4);
+  font-style: italic;
+  font-weight: 300;
+}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.footer {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 56px 40px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 24px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--fg-3);
+}
+
+.footer-mark {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--gold);
+  text-transform: none;
+  letter-spacing: 0;
+  text-align: center;
+}
+.footer .right { text-align: right; }
+.footer a {
+  color: var(--fg-3);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.footer a:hover { color: var(--gold); }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 1024px) {
+  .tiers-grid { grid-template-columns: repeat(2, 1fr); }
+  .tier-block:nth-child(2) { border-right: none; }
+  .tier-block:nth-child(1), .tier-block:nth-child(2) {
+    border-bottom: 1px solid var(--line);
+  }
+  .book {
+    grid-template-columns: 70px 1fr 120px;
+    gap: 28px;
+    padding: 36px 12px;
+  }
+  .book-num { font-size: 46px; }
+}
+
+@media (max-width: 720px) {
+  .topbar { padding: 16px 20px; font-size: 9px; letter-spacing: 0.18em; }
+  .topbar .nav-right { gap: 14px; }
+  .topbar .sep { display: none; }
+
+  .hero { padding: 64px 20px 56px; }
+  .hero h1 { max-width: none; }
+  .hero-stats { gap: 32px; padding: 24px 0; }
+  .hero-stat-num { font-size: 32px; }
+
+  .divider { padding: 0 20px; gap: 18px; }
+
+  .tiers { padding: 0 20px; }
+  .tiers-grid { grid-template-columns: 1fr; }
+  .tier-block {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    padding: 28px 18px;
+  }
+  .tier-block:last-child { border-bottom: none; }
+
+  .books-section { padding: 0 20px 64px; }
+  .book {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 32px 8px;
+  }
+  .book-num {
+    font-size: 40px;
+    color: var(--gold);
+    opacity: 0.6;
+  }
+  .book-side {
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+  .book-side .topics-count {
+    display: inline;
+    font-size: 22px;
+    margin-bottom: 0;
+    margin-right: 6px;
+  }
+  .book-arrow { margin-top: 0; }
+
+  .book-hero { padding: 48px 20px 40px; }
+  .back-link { margin-bottom: 36px; }
+  .book-hero-grid { grid-template-columns: 1fr; gap: 24px; position: relative; }
+  .book-hero-num {
+    position: absolute;
+    top: -12px;
+    right: 0;
+    font-size: 90px;
+    opacity: 0.08;
+    z-index: 0;
+  }
+  .book-hero-main { position: relative; z-index: 1; }
+
+  .topics-section { padding: 40px 20px 32px; }
+  .topics-header { gap: 14px; margin-bottom: 24px; padding-bottom: 16px; }
+  .topics-header .count { font-size: 9px; }
+  .topic {
+    grid-template-columns: 56px 1fr;
+    gap: 18px;
+    padding: 22px 4px;
+  }
+  .topic-num { font-size: 28px; }
+  .topic-status {
+    grid-column: 2;
+    text-align: left;
+    margin-top: 6px;
+  }
+
+  .page-nav {
+    padding: 28px 20px;
+    grid-template-columns: 1fr;
+  }
+  .page-nav a, .page-nav .placeholder { padding: 22px 20px; }
+  .page-nav a:first-child {
+    border-right: 1px solid var(--line);
+    border-bottom: none;
+  }
+  .nav-next { text-align: left; }
+  .nav-next .nav-label::after { content: " →"; }
+
+  .footer {
+    padding: 36px 20px;
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 14px;
+  }
+  .footer .right { text-align: center; }
+}
+
+/* ============================================================
+   TOPIC PAGE STYLES — extends premium V2 dark theme
+   ============================================================ */
+
+/* Container for prose content */
+.topic-page {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 0 40px 80px;
+}
+
+.topic-page-header {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 70px 40px 50px;
+  border-bottom: 1px solid var(--line);
+}
+
+.topic-crumbs {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg-3);
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+}
+.topic-crumbs a {
+  color: var(--fg-3);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.topic-crumbs a:hover { color: var(--gold); }
+.topic-crumbs .dot { color: var(--fg-4); }
+.topic-crumbs .current { color: var(--gold); }
+
+.topic-page-meta {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg-3);
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.topic-page-meta .topic-num-badge {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.topic-page-header h1 {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(36px, 5.5vw, 64px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin: 0 0 24px;
+  color: var(--fg);
+}
+.topic-page-header h1 .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+
+.topic-page-header .lede {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(17px, 2vw, 21px);
+  line-height: 1.55;
+  color: var(--fg-2);
+  max-width: 680px;
+  margin: 0;
+}
+
+/* ============================================================
+   PROSE CONTENT
+   ============================================================ */
+.prose {
+  padding-top: 56px;
+}
+
+.prose h2 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(26px, 3.5vw, 36px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 72px 0 24px;
+  color: var(--fg);
+  position: relative;
+}
+.prose h2:first-child { margin-top: 0; }
+.prose h2 .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+.prose h2::before {
+  content: "";
+  display: block;
+  width: 32px;
+  height: 1px;
+  background: var(--gold);
+  margin-bottom: 20px;
+  opacity: 0.6;
+}
+
+.prose h3 {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 22px;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  margin: 48px 0 18px;
+  color: var(--fg);
+}
+
+.prose h4 {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--gold);
+  margin: 36px 0 14px;
+  font-weight: 600;
+}
+
+.prose p {
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--fg);
+  margin: 0 0 22px;
+}
+
+.prose p em, .prose li em {
+  font-style: italic;
+  color: var(--gold);
+}
+
+.prose strong {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.prose ul, .prose ol {
+  margin: 0 0 28px;
+  padding-left: 24px;
+}
+
+.prose li {
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--fg);
+  margin-bottom: 10px;
+}
+.prose li::marker { color: var(--gold); }
+
+/* Inline code */
+.prose code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--bg-3);
+  color: var(--gold-bright);
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--line-strong);
+  letter-spacing: 0;
+}
+
+/* Drop cap on first paragraph of prose */
+.prose > p:first-of-type::first-letter {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-style: italic;
+  font-size: 4.5em;
+  float: left;
+  line-height: 0.85;
+  margin: 0.05em 0.12em 0 0;
+  color: var(--gold);
+}
+
+/* ============================================================
+   CODE BLOCKS
+   ============================================================ */
+.codeblock {
+  background: var(--bg-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  margin: 28px 0 32px;
+  overflow: hidden;
+  position: relative;
+}
+.codeblock-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-2);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--fg-3);
+}
+.codeblock-head .lang {
+  color: var(--gold);
+  font-weight: 600;
+}
+.codeblock-head .file {
+  color: var(--fg-3);
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 0.04em;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.codeblock pre {
+  margin: 0;
+  padding: 20px 22px;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  line-height: 1.65;
+  overflow-x: auto;
+  color: var(--fg);
+  white-space: pre;
+}
+.codeblock pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+/* Syntax highlighting */
+.tok-kw    { color: #d99a4e; font-weight: 500; }  /* keyword: amber */
+.tok-fn    { color: #c9a961; }                     /* function: gold */
+.tok-str   { color: #a8c98a; }                     /* string: muted green */
+.tok-num   { color: #d4a8a8; }                     /* number: dusty pink */
+.tok-type  { color: #8ab5c9; }                     /* type: muted blue */
+.tok-com   { color: #6b6253; font-style: italic; } /* comment: muted */
+.tok-pp    { color: #b88aa8; }                     /* preprocessor: mauve */
+.tok-reg   { color: #d4a874; font-weight: 500; }   /* register name */
+.tok-op    { color: #b8ad94; }                     /* operator */
+
+/* ============================================================
+   DIAGRAMS — ASCII art boxes
+   ============================================================ */
+.diagram {
+  background: var(--bg-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 24px;
+  margin: 28px 0 32px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-x: auto;
+  color: var(--fg);
+  white-space: pre;
+}
+.diagram-caption {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--fg-3);
+  text-align: center;
+  margin: -16px 0 32px;
+}
+
+/* SVG diagram container */
+.svg-diagram {
+  background: var(--bg-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 24px;
+  margin: 28px 0 12px;
+  text-align: center;
+  overflow-x: auto;
+}
+.svg-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ============================================================
+   CALLOUTS
+   ============================================================ */
+.callout {
+  border-left: 3px solid var(--gold);
+  background: var(--gold-soft);
+  padding: 20px 24px;
+  margin: 28px 0 32px;
+  border-radius: 0 4px 4px 0;
+}
+.callout-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: var(--gold);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.callout p {
+  margin-bottom: 10px;
+  color: var(--fg);
+  font-size: 16px;
+}
+.callout p:last-child { margin-bottom: 0; }
+.callout.warn {
+  border-left-color: #c97a5a;
+  background: rgba(201, 122, 90, 0.08);
+}
+.callout.warn .callout-label { color: #d99a7a; }
+
+.callout.key {
+  border-left-color: var(--gold-bright);
+  background: rgba(217, 187, 116, 0.06);
+}
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+.table-wrap {
+  margin: 28px 0 32px;
+  overflow-x: auto;
+}
+.prose-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.prose-table th, .prose-table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  color: var(--fg);
+}
+.prose-table th {
+  background: var(--bg-3);
+  color: var(--gold);
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  border-bottom: 1px solid var(--line-strong);
+}
+.prose-table tr:hover td {
+  background: var(--gold-soft);
+}
+
+/* ============================================================
+   INTERVIEW Q&A
+   ============================================================ */
+.qa-section {
+  margin-top: 64px;
+  padding-top: 48px;
+  border-top: 1px solid var(--line);
+}
+.qa-section-head {
+  margin-bottom: 32px;
+}
+.qa-section-head .label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: var(--gold);
+  margin-bottom: 12px;
+}
+.qa-section-head .label::before {
+  content: "§ ";
+  color: var(--fg-3);
+}
+.qa-section-head h2 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(28px, 4vw, 38px);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  margin: 0;
+  color: var(--fg);
+}
+.qa-section-head h2 .em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 300;
+}
+.qa-section-head h2::before { display: none; }
+
+.qa {
+  border-bottom: 1px solid var(--line);
+  padding: 24px 0;
+}
+.qa:last-child { border-bottom: none; }
+
+.qa-q {
+  display: flex;
+  gap: 18px;
+  align-items: baseline;
+  margin-bottom: 14px;
+}
+.qa-num {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--gold);
+  line-height: 1;
+  flex-shrink: 0;
+}
+.qa-question {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 1.4;
+  color: var(--fg);
+  letter-spacing: -0.01em;
+}
+.qa-answer {
+  margin-left: 40px;
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--fg-2);
+}
+.qa-answer p {
+  margin: 0 0 14px;
+  color: var(--fg-2);
+}
+.qa-answer p:last-child { margin-bottom: 0; }
+.qa-answer code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--bg-3);
+  color: var(--gold-bright);
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+.qa-answer strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+/* ============================================================
+   TOPIC NAV (prev / next topic)
+   ============================================================ */
+.topic-nav {
+  max-width: 820px;
+  margin: 60px auto 0;
+  padding: 32px 40px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.topic-nav a, .topic-nav .placeholder {
+  text-decoration: none;
+  color: inherit;
+  padding: 24px 22px;
+  border: 1px solid var(--line);
+  display: block;
+  transition: all 0.25s ease;
+}
+.topic-nav a:first-child { border-right: none; }
+.topic-nav a:hover {
+  background: var(--gold-soft);
+  border-color: var(--gold-deep);
+  z-index: 2;
+  position: relative;
+}
+.topic-nav .nav-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--fg-3);
+  margin-bottom: 10px;
+  display: block;
+}
+.topic-nav .nav-prev .nav-label::before { content: "← "; }
+.topic-nav .nav-next { text-align: right; }
+.topic-nav .nav-next .nav-label::after { content: " →"; }
+.topic-nav .nav-title {
+  font-family: var(--serif);
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--fg);
+}
+.topic-nav a:hover .nav-title { color: var(--gold); }
+.topic-nav a:hover .nav-label { color: var(--gold); }
+.topic-nav .placeholder {
+  opacity: 0.3;
+  pointer-events: none;
+}
+.topic-nav .placeholder .nav-title {
+  color: var(--fg-4);
+  font-style: italic;
+  font-weight: 300;
+}
+
+/* ============================================================
+   MOBILE RESPONSIVE for topic pages
+   ============================================================ */
+@media (max-width: 720px) {
+  .topic-page-header { padding: 40px 20px 32px; }
+  .topic-page { padding: 0 20px 56px; }
+  .topic-crumbs { margin-bottom: 24px; gap: 8px; font-size: 8px; }
+  .prose { padding-top: 36px; }
+  .prose h2 { margin: 48px 0 18px; }
+  .prose h3 { margin: 32px 0 14px; }
+  .prose p, .prose li { font-size: 16px; }
+  .prose > p:first-of-type::first-letter { font-size: 3.5em; }
+  .codeblock pre { font-size: 12px; padding: 16px 18px; }
+  .diagram { font-size: 11px; padding: 18px; }
+  .callout { padding: 16px 18px; margin: 22px 0; }
+  .qa-answer { margin-left: 0; }
+  .qa-question { font-size: 17px; }
+  .qa-answer { font-size: 15px; }
+  .topic-nav { padding: 24px 20px; grid-template-columns: 1fr; }
+  .topic-nav a, .topic-nav .placeholder { padding: 18px 18px; }
+  .topic-nav a:first-child {
+    border-right: 1px solid var(--line);
+    border-bottom: none;
+  }
+  .topic-nav .nav-next { text-align: left; }
+  .topic-nav .nav-next .nav-label::after { content: " →"; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="topbar">
+  <a href="../index.html" class="brand">Embedded Systems Mastery</a>
+  <span class="nav-right">
+    <a href="HB2.html">HB2 Index</a>
+    <span class="sep">·</span>
+    <span>Topic 03</span>
+  </span>
+</div>
+
+<header class="topic-page-header">
+  <div class="topic-crumbs">
+    <a href="../index.html">Series</a>
+    <span class="dot">·</span>
+    <a href="HB2.html">HB2</a>
+    <span class="dot">·</span>
+    <span class="current">Topic 03</span>
+  </div>
+  <div class="topic-page-meta">
+    <span class="topic-num-badge">Topic 03</span>
+    <span>·</span>
+    <span>HB2 · ARM Architecture &amp; MCU Internals</span>
+  </div>
+  <h1>Memory Map, Bus Matrix &amp; <span class='em'>AHB / APB</span></h1>
+  <p class="lede">The 4 GB address space is the same on every Cortex-M ever made. What the silicon vendor wires into it is what makes the chip your chip.</p>
+</header>
+
+<article class="topic-page">
+  <div class="prose">
+
+<p>Cortex-M defines a flat, byte-addressable 32-bit memory map — four gigabytes of address space, divided into eight one-gigabyte regions, each with a fixed purpose. Every Cortex-M chip ever shipped uses the same map. What changes from vendor to vendor is what is actually <em>wired into</em> each region: how much flash, how much SRAM, which peripherals at which addresses, and what bus fabric connects them.</p>
+
+<p>Understanding this layout is the difference between firmware that "just works on STM32" and firmware that you can move between vendors with a single header file change.</p>
+
+<h2>The <span class="em">architectural</span> memory map</h2>
+
+<p>The map is fixed by the architecture. The CPU itself treats each region according to its <em>default memory type</em> — Normal, Device, or Strongly-ordered — which affects caching, reordering, and access size rules.</p>
+
+<div class="diagram">             Cortex-M Architectural Memory Map (4 GB)
+
+  0xFFFFFFFF  ┌────────────────────────────┐
+              │  Vendor Specific          │  System region
+  0xE0100000  ├────────────────────────────┤  (private peripherals,
+              │  Private Peripheral Bus    │   debug, vendor-defined)
+  0xE0000000  ├────────────────────────────┤  ← System, XN
+              │  External Device 1 GB      │  Off-chip peripherals
+  0xA0000000  ├────────────────────────────┤  ← Device, XN
+              │  External RAM 1 GB         │  SDRAM, external SRAM
+  0x60000000  ├────────────────────────────┤  ← Normal
+              │  Peripheral 0.5 GB         │  On-chip peripherals
+  0x40000000  ├────────────────────────────┤  ← Device, XN
+              │  SRAM 0.5 GB               │  Internal RAM
+  0x20000000  ├────────────────────────────┤  ← Normal
+              │  Code 0.5 GB               │  Flash, boot ROM
+  0x00000000  └────────────────────────────┘  ← Normal
+
+  XN = "eXecute Never" — fetching code from this region triggers
+       a UsageFault.  Stops attackers running code in RAM/peripherals.</div>
+
+<div class="callout key">
+<div class="callout-label">Key Idea</div>
+<p>The default memory <em>type</em> matters even if you never touch the MPU. Writes to <em>Device</em> memory (peripheral region) are not buffered and not reordered — they always complete in the order you wrote them. Writes to <em>Normal</em> memory (SRAM, code) can be buffered and reordered by the bus fabric for performance. This is why <code>volatile</code> is necessary for peripheral access, and also why DMA buffers in cached SRAM need explicit cache maintenance on Cortex-M7.</p>
+</div>
+
+<h2>The <span class="em">code</span> region — 0x00000000 to 0x1FFFFFFF</h2>
+
+<p>This is where flash lives, where the vector table lives at reset, and where most executable code is fetched from. The first two words at <code>0x00000000</code> are mandatory:</p>
+
+<ul>
+<li><code>0x00000000</code> — initial value of MSP, loaded by hardware at reset</li>
+<li><code>0x00000004</code> — initial PC value, the address of <code>Reset_Handler</code></li>
+</ul>
+
+<p>A vendor can alias their physical flash anywhere they like inside the code region. Most STM32 parts map flash to both <code>0x00000000</code> (for the initial vector fetch) <em>and</em> <code>0x08000000</code> (the natural location). The "<code>0x08</code>" address is what you should always use in linker scripts — it survives boot mode changes, where the boot pins might remap <code>0x00000000</code> to ROM or system memory instead.</p>
+
+<h2>The <span class="em">SRAM</span> region — 0x20000000 to 0x3FFFFFFF</h2>
+
+<p>Internal SRAM lives here. Stack, heap, <code>.bss</code>, <code>.data</code> — everything the linker assigns to "RAM" sits in this region. Cortex-M3 and M4 also include a <em>bit-band</em> alias subregion (0x22000000 onwards) that lets you atomically set or clear a single bit in the lowest megabyte of SRAM by writing to a calculated address. Removed in Cortex-M7 and later.</p>
+
+<div class="diagram">         Bit-Band Aliasing (Cortex-M3 / M4 only)
+
+  ┌──────────────────────────────────────────────────────────┐
+  │ Bit-band region:  0x20000000 - 0x200FFFFF  (1 MB)        │
+  │ Each bit in this region has its own 32-bit alias address │
+  │ in the alias region.                                     │
+  ├──────────────────────────────────────────────────────────┤
+  │ Bit-band alias:   0x22000000 - 0x23FFFFFF  (32 MB)       │
+  │ Writing 0 or 1 to an alias address sets the target bit   │
+  │ atomically — no read-modify-write cycle.                 │
+  └──────────────────────────────────────────────────────────┘
+
+  Alias address = 0x22000000
+                + (byte_offset_in_region * 32)
+                + (bit_index * 4)
+
+  Example: bit 3 of byte at 0x20000010
+         = 0x22000000 + (0x10 * 32) + (3 * 4)
+         = 0x22000200 + 12
+         = 0x2200020C</div>
+
+<h2>The <span class="em">peripheral</span> region — 0x40000000 to 0x5FFFFFFF</h2>
+
+<p>Memory-mapped peripherals live here. On most ARM-based MCUs, this region is the bridge between the CPU's AHB bus and the slower APB peripheral buses. The address layout inside this region is entirely vendor-defined — there is no architectural rule for where GPIO, UART, or SPI registers must sit.</p>
+
+<p>Almost every Cortex-M architecture peripheral region exposes an APB1 segment (lower-speed, lower-power peripherals — TIM2, UART, I2C, etc.) and an APB2 segment (higher-speed peripherals — SPI, USART1, TIM1, ADC). The Reference Manual for the specific chip is the authoritative source.</p>
+
+<h2>The <span class="em">system</span> region — 0xE0000000 and up</h2>
+
+<p>This is the most important region you have never thought about. It contains the <strong>Private Peripheral Bus (PPB)</strong> — every Cortex-M's built-in system registers, all sitting at architecturally fixed addresses:</p>
+
+<div class="table-wrap">
+<table class="prose-table">
+<thead>
+<tr><th>Address</th><th>What lives there</th></tr>
+</thead>
+<tbody>
+<tr><td>0xE000E000 – 0xE000EFFF</td><td>System Control Space (SCS): SCB, NVIC, SysTick, MPU</td></tr>
+<tr><td>0xE0001000</td><td>DWT — Data Watchpoint and Trace</td></tr>
+<tr><td>0xE0002000</td><td>FPB — Flash Patch and Breakpoint (M3/M4)</td></tr>
+<tr><td>0xE0000000</td><td>ITM — Instrumentation Trace Macrocell</td></tr>
+<tr><td>0xE0040000</td><td>TPIU — Trace Port Interface Unit</td></tr>
+<tr><td>0xE000ED00</td><td>SCB.CPUID — the part-identification register (Topic 01)</td></tr>
+<tr><td>0xE000ED90</td><td>MPU base (Topic 06)</td></tr>
+<tr><td>0xE000ED08</td><td>SCB.VTOR — Vector Table Offset Register (Topic 08)</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>These addresses are the same on every Cortex-M ever made. They are why CMSIS works without any vendor knowledge for the core itself.</p>
+
+<h2>The <span class="em">bus matrix</span> — what actually connects everything</h2>
+
+<p>Inside the silicon, the CPU and peripherals are connected by a <em>bus matrix</em> built from AMBA (Advanced Microcontroller Bus Architecture) protocols. AMBA defines three main flavours: <strong>AHB</strong> (high-performance), <strong>APB</strong> (peripheral), and <strong>AXI</strong> (Cortex-M7 and applications processors). Each is a different trade-off between speed, area, and complexity.</p>
+
+<div class="diagram">                Typical Cortex-M4 Bus Matrix
+
+  ┌─────────────┐
+  │   CPU       │── I-bus ──┐
+  │  (Cortex-M4)│── D-bus ──┤
+  │             │── S-bus ──┤
+  └─────────────┘           │
+                            │
+                ┌───────────▼────────────────────┐
+                │       Bus Matrix (AHB)         │
+                │    multi-master arbiter        │
+                └─┬──────┬───────┬───────────┬───┘
+                  │      │       │           │
+                  ▼      ▼       ▼           ▼
+              ┌─────┐ ┌─────┐ ┌─────┐  ┌──────────┐
+              │FLASH│ │SRAM │ │ DMA │  │ AHB→APB  │
+              └─────┘ └─────┘ └─────┘  │  Bridge  │
+                                       └────┬─────┘
+                                            ▼
+                                ┌───────────────────────┐
+                                │  APB1 / APB2 buses    │
+                                │  GPIO, UART, I2C, SPI │
+                                │  TIMx, ADC, RTC ...   │
+                                └───────────────────────┘</div>
+
+<h3>I-bus, D-bus, S-bus</h3>
+
+<p>The Cortex-M3 and M4 split their CPU port into three buses. This is what allows the CPU to fetch an instruction from flash, load data from SRAM, and access a peripheral on the system bus <em>all in the same cycle</em> — the Harvard architecture advantage.</p>
+
+<ul>
+<li><strong>I-bus</strong> (Instruction bus) — fetches instructions from the code region (0x00000000–0x1FFFFFFF).</li>
+<li><strong>D-bus</strong> (Data bus) — loads/stores data from the code region too, when literal pools or constants are read.</li>
+<li><strong>S-bus</strong> (System bus) — everything else: SRAM, peripherals, PPB.</li>
+</ul>
+
+<p>This is why constants placed in flash (<code>.rodata</code>) and code in flash (<code>.text</code>) can be accessed simultaneously: I-bus is reading the instruction, D-bus is reading the constant, and S-bus is doing something with SRAM. No contention.</p>
+
+<h3>AHB versus APB — speed versus complexity</h3>
+
+<p><strong>AHB</strong> (Advanced High-performance Bus) runs at the full CPU clock. It supports burst transfers, pipelined access, and multiple bus masters (CPU, DMA controllers, Ethernet MAC). Used for memory, DMA, and high-bandwidth peripherals.</p>
+
+<p><strong>APB</strong> (Advanced Peripheral Bus) runs at a divided-down clock — typically half or quarter of the CPU. It is single-master, non-pipelined, and much smaller in silicon. Used for low-bandwidth peripherals where speed does not matter: UART, I2C, GPIO config, RTC.</p>
+
+<p>An <em>AHB-to-APB bridge</em> sits between them. When the CPU accesses a peripheral register, the access goes through the bus matrix on AHB, hits the bridge, and is translated into a slower APB transaction. This is why peripheral reads take more cycles than you might expect — the bridge serializes the access.</p>
+
+<h3>AXI — the Cortex-M7 upgrade</h3>
+
+<p>Cortex-M7 replaces the older AHB-Lite interface with <strong>AXI</strong> (Advanced eXtensible Interface) for its main system bus. AXI is fully pipelined with separate address/read/write channels, supporting out-of-order completion. This is what lets the M7 sustain hundreds of MHz with caches and burst transfers from external SDRAM.</p>
+
+<div class="diagram">     AHB-Lite                      AXI
+     (M3/M4/M33)                   (M7, applications cores)
+
+     ┌──────────┐                  ┌──────────────────┐
+     │  Master  │                  │     Master       │
+     └─┬─┬──┬──┬┘                  └─┬──┬──┬───┬──┬──┬┘
+       │ │  │  │                     │  │  │   │  │  │
+       │ │  │  │                     │  │  │   │  │  │
+   ADDR DATA HSEL HRDY            AR AW W   R   B BREADY
+     (one transfer at a time)      (independent channels,
+                                    pipelined out-of-order)</div>
+
+<h2>The <span class="em">tightly coupled memories</span> — TCMs</h2>
+
+<p>Cortex-M7 (and some M55/M85 implementations) adds two special memory blocks that sit outside the cache and outside the main bus matrix: <strong>ITCM</strong> (Instruction TCM) and <strong>DTCM</strong> (Data TCM). They are small SRAMs (typically 16 KB to 256 KB) wired directly to the CPU on dedicated buses.</p>
+
+<p>Why this matters: an ITCM access has zero wait states and zero cache miss risk. Code placed in ITCM runs at full CPU speed deterministically — perfect for interrupt handlers and inner loops. DTCM is the same for data: zero-latency, no cache coherency issues, ideal for DMA buffers.</p>
+
+<div class="callout">
+<div class="callout-label">Linker Script Pattern</div>
+<p>To place a hot function in ITCM, mark it with a custom section attribute and route that section in the linker script. The common pattern is <code>__attribute__((section(".itcm_text")))</code> on the function definition, plus a matching <code>SECTIONS</code> rule in the <code>.ld</code> file mapping <code>.itcm_text</code> into the ITCM memory block. Covered in detail in HB4 Topic 03.</p>
+</div>
+
+<h2>Vendor-specific overlays — <span class="em">STM32 example</span></h2>
+
+<p>To make this concrete, here is how STMicro lays out the peripheral region on a Cortex-M4-based STM32F4. Note that this is <em>not</em> defined by the architecture — every vendor picks their own addresses.</p>
+
+<div class="table-wrap">
+<table class="prose-table">
+<thead>
+<tr><th>Base</th><th>Bus</th><th>Peripheral</th></tr>
+</thead>
+<tbody>
+<tr><td>0x40000000</td><td>APB1</td><td>TIM2, TIM3, TIM4, TIM5</td></tr>
+<tr><td>0x40004400</td><td>APB1</td><td>USART2, USART3</td></tr>
+<tr><td>0x40005400</td><td>APB1</td><td>I2C1, I2C2, I2C3</td></tr>
+<tr><td>0x40010000</td><td>APB2</td><td>TIM1, USART1, USART6</td></tr>
+<tr><td>0x40012000</td><td>APB2</td><td>ADC1, ADC2, ADC3</td></tr>
+<tr><td>0x40013000</td><td>APB2</td><td>SPI1, SYSCFG, EXTI</td></tr>
+<tr><td>0x40020000</td><td>AHB1</td><td>GPIOA, GPIOB, GPIOC ...</td></tr>
+<tr><td>0x40023800</td><td>AHB1</td><td>RCC (clock controller)</td></tr>
+<tr><td>0x40026000</td><td>AHB1</td><td>DMA1, DMA2</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>The same Cortex-M4 core on an NXP K66F or Microchip SAM4E has the same architectural memory map but completely different vendor addresses for these peripherals. This is why peripheral access code is the least portable part of any firmware project — the CPU is identical but the addresses are not.</p>
+
+<h2>Test code — <span class="em">memory map probe</span></h2>
+
+<p>This routine reads from each architectural region and confirms what is present. Useful during board bring-up to verify SRAM is mapped, peripherals respond, and the PPB is reachable.</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">memmap_probe.c</span></div>
+<pre><code><span class="tok-pp">#include</span> <span class="tok-str">&lt;stdint.h&gt;</span>
+<span class="tok-pp">#include</span> <span class="tok-str">&lt;stdio.h&gt;</span>
+
+<span class="tok-com">/* Generic region samples — addresses tweaked per vendor. */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">FLASH_BASE</span>      <span class="tok-num">0x08000000UL</span>   <span class="tok-com">/* STM32 main flash alias */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">SRAM_BASE</span>       <span class="tok-num">0x20000000UL</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">PERIPH_BASE</span>     <span class="tok-num">0x40000000UL</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">PPB_CPUID</span>      <span class="tok-num">0xE000ED00UL</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">PPB_VTOR</span>       <span class="tok-num">0xE000ED08UL</span>
+
+<span class="tok-kw">static</span> <span class="tok-type">uint32_t</span> <span class="tok-fn">safe_read</span>(<span class="tok-type">uint32_t</span> addr)
+{
+    <span class="tok-kw">return</span> *(<span class="tok-kw">volatile</span> <span class="tok-type">uint32_t</span> *)addr;
+}
+
+<span class="tok-kw">void</span> <span class="tok-fn">probe_memory_map</span>(<span class="tok-kw">void</span>)
+{
+    <span class="tok-fn">printf</span>(<span class="tok-str">"--- Memory map probe ---\n"</span>);
+
+    <span class="tok-com">/* Flash: first 8 bytes hold initial MSP and Reset_Handler */</span>
+    <span class="tok-fn">printf</span>(<span class="tok-str">"Flash[0]  (init MSP)     = 0x%08lX\n"</span>,
+           <span class="tok-fn">safe_read</span>(<span class="tok-reg">FLASH_BASE</span>));
+    <span class="tok-fn">printf</span>(<span class="tok-str">"Flash[1]  (Reset_Handler) = 0x%08lX\n"</span>,
+           <span class="tok-fn">safe_read</span>(<span class="tok-reg">FLASH_BASE</span> + <span class="tok-num">4</span>));
+
+    <span class="tok-com">/* SRAM: read whatever happens to be at start of RAM */</span>
+    <span class="tok-fn">printf</span>(<span class="tok-str">"SRAM[0]                   = 0x%08lX\n"</span>,
+           <span class="tok-fn">safe_read</span>(<span class="tok-reg">SRAM_BASE</span>));
+
+    <span class="tok-com">/* PPB: CPUID must be readable on every Cortex-M */</span>
+    <span class="tok-fn">printf</span>(<span class="tok-str">"PPB CPUID                 = 0x%08lX\n"</span>,
+           <span class="tok-fn">safe_read</span>(<span class="tok-reg">PPB_CPUID</span>));
+
+    <span class="tok-com">/* PPB: VTOR tells us where vector table actually lives */</span>
+    <span class="tok-fn">printf</span>(<span class="tok-str">"PPB VTOR                  = 0x%08lX\n"</span>,
+           <span class="tok-fn">safe_read</span>(<span class="tok-reg">PPB_VTOR</span>));
+}</code></pre>
+</div>
+
+<p>Typical output on an STM32F4 with a vector table at the flash origin:</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">Console</span><span class="file">SWO output</span></div>
+<pre><code>--- Memory map probe ---
+Flash[0]  (init MSP)     = 0x20020000   ← stack starts at 128 KB into SRAM
+Flash[1]  (Reset_Handler) = 0x080001C9   ← Thumb addr (LSB=1 mandatory)
+SRAM[0]                   = 0x00000000
+PPB CPUID                 = 0x410FC241   ← Cortex-M4 r0p1, implementer ARM
+PPB VTOR                  = 0x08000000   ← vectors at flash base</code></pre>
+</div>
+
+<div class="callout warn">
+<div class="callout-label">Reading from unmapped regions causes faults</div>
+<p>Accessing an address that the vendor has not wired up will trigger a BusFault (escalated to HardFault on most parts). The probe routine above only touches regions that <em>must</em> exist by architecture (PPB) or that you have already confirmed. Do not blindly read <code>0x60000000</code> or <code>0xA0000000</code> on a chip without external memory.</p>
+</div>
+
+<div class="qa-section">
+<div class="qa-section-head">
+  <div class="label">Interview Questions</div>
+  <h2>Interview Q &amp; A — <span class="em">Memory Map &amp; Bus</span></h2>
+</div>
+
+<div class="qa">
+  <div class="qa-q">
+    <span class="qa-num">Q1.</span>
+    <span class="qa-question">Why does the Cortex-M place SRAM at 0x20000000 and peripherals at 0x40000000?</span>
+  </div>
+  <div class="qa-answer">
+    <p>To give them different default memory <em>types</em>. SRAM at <code>0x20000000</code> is in the <strong>Normal</strong> memory region — the bus matrix can buffer, reorder, and cache accesses there for performance. Peripherals at <code>0x40000000</code> are in the <strong>Device</strong> region — accesses are strictly ordered, never reordered, and always reach the destination in the sequence the CPU issued them.</p>
+    <p>This is the architectural reason <code>volatile</code> matters for peripherals: even without it, the compiler might reorder accesses, but the bus matrix will not — the type protects you partially. Cached data, by contrast, requires explicit cache maintenance because the bus matrix freely reorders Normal accesses.</p>
+  </div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">
+    <span class="qa-num">Q2.</span>
+    <span class="qa-question">What is the difference between AHB and APB, and why do MCUs have both?</span>
+  </div>
+  <div class="qa-answer">
+    <p><strong>AHB</strong> runs at the full CPU clock, supports burst transfers and pipelined access, and supports multiple masters (CPU, DMA, Ethernet). It is bigger in silicon and used for memory and high-bandwidth peripherals.</p>
+    <p><strong>APB</strong> runs at a divided-down clock (often half or quarter), is single-master, and is not pipelined. It is much smaller in silicon — perfect for low-bandwidth peripherals like UART or GPIO config registers.</p>
+    <p>Why both? Cost and power. Putting every peripheral on AHB would consume die area and power for no real benefit — a UART running at 115 kbaud does not need 168 MHz bus access. The AHB-to-APB bridge gets the slow peripherals onto a slow, small bus while still letting the CPU access them transparently.</p>
+  </div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">
+    <span class="qa-num">Q3.</span>
+    <span class="qa-question">What is bit-banding, when is it useful, and on which cores is it available?</span>
+  </div>
+  <div class="qa-answer">
+    <p>Bit-banding is a hardware feature on Cortex-M3 and M4 that maps each bit in the lowest 1 MB of SRAM (and the lowest 1 MB of peripheral space) to a unique 32-bit address in an <em>alias</em> region. Writing 0 or 1 to that alias address atomically sets or clears the target bit — no read-modify-write cycle, no risk of being interrupted between the read and the write.</p>
+    <p>It is useful for race-free bit manipulation in interrupt-heavy code. Without bit-banding, setting a single bit in a flag register requires a read-modify-write, which can race with an ISR that touches the same byte.</p>
+    <p>Bit-banding was removed from Cortex-M7 and later because the LDREX/STREX atomic primitives provide a more general solution.</p>
+  </div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">
+    <span class="qa-num">Q4.</span>
+    <span class="qa-question">What are TCMs, and why does the Cortex-M7 have them when it already has caches?</span>
+  </div>
+  <div class="qa-answer">
+    <p>TCM stands for Tightly Coupled Memory — two small SRAM blocks (ITCM for instructions, DTCM for data) wired directly into the CPU's pipeline, outside the cache hierarchy and outside the main bus matrix.</p>
+    <p>The reason for having both caches and TCMs: <strong>determinism</strong>. A cache gives you average-case performance but worst-case is bounded by the slowest memory you might miss into. For real-time code where worst-case latency matters — an interrupt handler that must complete in a known number of cycles, or an audio inner loop that cannot afford a cache miss — TCM provides single-cycle, predictable access.</p>
+    <p>The typical pattern is: bulk code and data live in flash/SRAM behind the cache; hot, latency-critical code goes in ITCM; DMA buffers and other latency-critical data go in DTCM.</p>
+  </div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">
+    <span class="qa-num">Q5.</span>
+    <span class="qa-question">Where is the Private Peripheral Bus and what lives in it?</span>
+  </div>
+  <div class="qa-answer">
+    <p>The PPB starts at <code>0xE0000000</code> and contains everything the ARM core needs to function: the System Control Block (CPUID, VTOR, reset control), the NVIC (interrupt enable/priority registers), the SysTick timer, the MPU control registers, and the debug components (DWT, ITM, FPB, TPIU).</p>
+    <p>What makes it special is that the addresses are <em>architecturally fixed</em> — they are the same on every Cortex-M ever made, from M0 to M85. This is why CMSIS works portably for core access: <code>SCB-&gt;CPUID</code> always reads from <code>0xE000ED00</code>, regardless of vendor.</p>
+    <p>The PPB is also Execute-Never by default — you cannot run code from <code>0xE000xxxx</code>. The architecture enforces this to prevent attackers from putting shellcode in a memory-mapped register.</p>
+  </div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">
+    <span class="qa-num">Q6.</span>
+    <span class="qa-question">Why does the Cortex-M3/M4 have three CPU buses (I, D, S) instead of one?</span>
+  </div>
+  <div class="qa-answer">
+    <p>To allow truly parallel access. With separate I-bus (instruction fetch from code region), D-bus (data load from code region — usually constants in flash), and S-bus (everything in SRAM, peripherals, and PPB), the CPU can:</p>
+    <p>Fetch an instruction from flash on the I-bus, load a constant from flash on the D-bus, and load a variable from SRAM on the S-bus — <strong>all in the same cycle</strong>. This is a Harvard architecture optimisation, and it is the reason simple loops on a Cortex-M4 can issue one instruction per cycle while still touching memory.</p>
+    <p>The Cortex-M7 collapses these into a single AXI master plus the TCM ports because AXI's pipelined out-of-order behaviour makes the explicit bus split unnecessary.</p>
+  </div>
+</div>
+
+</div>
+
+  </div>
+</article>
+
+<nav class="topic-nav">
+  <a href="HB2-T02.html" class="nav-prev">
+    <span class="nav-label">Previous · Topic 02</span>
+    <div class="nav-title">Programmer's Model & Register File</div>
+  </a>
+  <a href="HB2-T04.html" class="nav-next">
+    <span class="nav-label">Next · Topic 04</span>
+    <div class="nav-title">Pipeline, Branch Prediction & Counters</div>
+  </a>
+</nav>
+
+<footer class="footer">
+  <span>HB2 · Topic 03</span>
+  <span class="footer-mark">§</span>
+  <span class="right"><a href="HB2.html">Back to HB2 Index</a></span>
+</footer>
+
+</div>
+</body>
+</html>
