@@ -14,3 +14,4 @@ if defined CHANGES (
 ) else (
     echo Nothing to push - working tree is clean.
 )
+pause

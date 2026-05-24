@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HB6 · Topic 02 · SPI — Modes, Multi-Slave, QSPI / OSPI — Embedded Systems Mastery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,200;0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,200;1,9..144,300;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #14110d;
+  --bg-2: #1a1612;
+  --bg-3: #221d17;
+  --bg-card: #18140f;
+  --fg: #e8dfc9;
+  --fg-2: #b8ad94;
+  --fg-3: #7d735f;
+  --fg-4: #4e4737;
+  --gold: #c9a961;
+  --gold-bright: #d9bb74;
+  --gold-deep: #9e8649;
+  --gold-soft: rgba(201, 169, 97, 0.12);
+  --line: rgba(232, 223, 201, 0.07);
+  --line-strong: rgba(232, 223, 201, 0.14);
+  --serif: "Fraunces", "Cormorant Garamond", Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "kern", "liga", "onum";
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.45 0 0 0 0 0.35 0 0 0 0.06 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  opacity: 0.6;
+  z-index: 0;
+  mix-blend-mode: overlay;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(201, 169, 97, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 40% at 50% 100%, rgba(20, 17, 13, 0.5) 0%, transparent 50%);
+  z-index: 0;
+}
+
+.page { position: relative; z-index: 1; }
+::selection { background: var(--gold); color: var(--bg); }
+
+/* TOP BAR */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 20px 32px;
+  background: rgba(20, 17, 13, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+.topbar .brand { color: var(--gold); font-weight: 500; text-decoration: none; letter-spacing: 0.24em; }
+.topbar .nav-right { display: flex; gap: 22px; align-items: center; color: var(--fg-3); }
+.topbar .nav-right a { color: var(--fg-3); text-decoration: none; transition: color 0.2s ease; }
+.topbar .nav-right a:hover { color: var(--gold); }
+.topbar .sep { color: var(--fg-4); }
+
+/* TOPIC PAGE HEADER */
+.topic-page-header {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 70px 40px 50px;
+  border-bottom: 1px solid var(--line);
+}
+
+.topic-crumbs {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg-3);
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+}
+.topic-crumbs a { color: var(--fg-3); text-decoration: none; transition: color 0.2s; }
+.topic-crumbs a:hover { color: var(--gold); }
+.topic-crumbs .dot { color: var(--fg-4); }
+.topic-crumbs .current { color: var(--gold); }
+
+.topic-page-meta {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg-3);
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.topic-page-meta .topic-num-badge { color: var(--gold); font-weight: 600; }
+
+.topic-page-header h1 {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(36px, 5.5vw, 64px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin: 0 0 24px;
+  color: var(--fg);
+}
+.topic-page-header h1 .em { font-style: italic; color: var(--gold); font-weight: 300; }
+.topic-page-header .lede {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(17px, 2vw, 21px);
+  line-height: 1.55;
+  color: var(--fg-2);
+  max-width: 680px;
+  margin: 0;
+}
+
+/* PROSE */
+.topic-page { max-width: 820px; margin: 0 auto; padding: 0 40px 80px; }
+.prose { padding-top: 56px; }
+
+.prose h2 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(26px, 3.5vw, 36px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 72px 0 24px;
+  color: var(--fg);
+  position: relative;
+}
+.prose h2:first-child { margin-top: 0; }
+.prose h2 .em { font-style: italic; color: var(--gold); font-weight: 300; }
+.prose h2::before {
+  content: "";
+  display: block;
+  width: 32px;
+  height: 1px;
+  background: var(--gold);
+  margin-bottom: 20px;
+  opacity: 0.6;
+}
+
+.prose h3 {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 22px;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  margin: 48px 0 18px;
+  color: var(--fg);
+}
+
+.prose h4 {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--gold);
+  margin: 36px 0 14px;
+  font-weight: 600;
+}
+
+.prose p {
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--fg);
+  margin: 0 0 22px;
+}
+.prose p em, .prose li em { font-style: italic; color: var(--gold); }
+.prose strong { font-weight: 600; color: var(--fg); }
+
+.prose ul, .prose ol { margin: 0 0 28px; padding-left: 24px; }
+.prose li { font-family: var(--serif); font-size: 17px; line-height: 1.65; color: var(--fg); margin-bottom: 10px; }
+.prose li::marker { color: var(--gold); }
+
+.prose code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--bg-3);
+  color: var(--gold-bright);
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--line-strong);
+  letter-spacing: 0;
+}
+
+.prose > p:first-of-type::first-letter {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-style: italic;
+  font-size: 4.5em;
+  float: left;
+  line-height: 0.85;
+  margin: 0.05em 0.12em 0 0;
+  color: var(--gold);
+}
+
+/* CODE BLOCKS */
+.codeblock {
+  background: var(--bg-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  margin: 28px 0 32px;
+  overflow: hidden;
+}
+.codeblock-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-2);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--fg-3);
+}
+.codeblock-head .lang { color: var(--gold); font-weight: 600; }
+.codeblock-head .file { color: var(--fg-3); font-style: italic; text-transform: none; letter-spacing: 0.04em; font-size: 11px; }
+.codeblock pre { margin: 0; padding: 20px 22px; font-family: var(--mono); font-size: 13.5px; line-height: 1.65; overflow-x: auto; color: var(--fg); white-space: pre; }
+.codeblock pre code { background: transparent; border: none; padding: 0; color: inherit; font-size: inherit; }
+
+.tok-kw    { color: #d99a4e; font-weight: 500; }
+.tok-fn    { color: #c9a961; }
+.tok-str   { color: #a8c98a; }
+.tok-num   { color: #d4a8a8; }
+.tok-type  { color: #8ab5c9; }
+.tok-com   { color: #6b6253; font-style: italic; }
+.tok-pp    { color: #b88aa8; }
+.tok-reg   { color: #d4a874; font-weight: 500; }
+.tok-op    { color: #b8ad94; }
+
+/* DIAGRAMS */
+.diagram {
+  background: var(--bg-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 24px;
+  margin: 28px 0 32px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-x: auto;
+  color: var(--fg);
+  white-space: pre;
+}
+.diagram-caption {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--fg-3);
+  text-align: center;
+  margin: -16px 0 32px;
+}
+
+/* CALLOUTS */
+.callout {
+  border-left: 3px solid var(--gold);
+  background: var(--gold-soft);
+  padding: 20px 24px;
+  margin: 28px 0 32px;
+  border-radius: 0 4px 4px 0;
+}
+.callout-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: var(--gold);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.callout p { margin-bottom: 10px; color: var(--fg); font-size: 16px; }
+.callout p:last-child { margin-bottom: 0; }
+.callout.warn { border-left-color: #c97a5a; background: rgba(201, 122, 90, 0.08); }
+.callout.warn .callout-label { color: #d99a7a; }
+.callout.key { border-left-color: var(--gold-bright); background: rgba(217, 187, 116, 0.06); }
+
+/* TABLES */
+.table-wrap { margin: 28px 0 32px; overflow-x: auto; }
+.prose-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
+.prose-table th, .prose-table td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--line); color: var(--fg); }
+.prose-table th { background: var(--bg-3); color: var(--gold); font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.18em; border-bottom: 1px solid var(--line-strong); }
+.prose-table tr:hover td { background: var(--gold-soft); }
+
+/* Q&A */
+.qa-section { margin-top: 64px; padding-top: 48px; border-top: 1px solid var(--line); }
+.qa-section-head { margin-bottom: 32px; }
+.qa-section-head .label { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.28em; color: var(--gold); margin-bottom: 12px; }
+.qa-section-head .label::before { content: "§ "; color: var(--fg-3); }
+.qa-section-head h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(28px, 4vw, 38px); line-height: 1.1; letter-spacing: -0.025em; margin: 0; color: var(--fg); }
+.qa-section-head h2 .em { font-style: italic; color: var(--gold); font-weight: 300; }
+.qa-section-head h2::before { display: none; }
+
+.qa { border-bottom: 1px solid var(--line); padding: 24px 0; }
+.qa:last-child { border-bottom: none; }
+.qa-q { display: flex; gap: 18px; align-items: baseline; margin-bottom: 14px; }
+.qa-num { font-family: var(--serif); font-style: italic; font-size: 22px; font-weight: 300; color: var(--gold); line-height: 1; flex-shrink: 0; }
+.qa-question { font-family: var(--serif); font-weight: 500; font-size: 18px; line-height: 1.4; color: var(--fg); letter-spacing: -0.01em; }
+.qa-answer { margin-left: 40px; font-family: var(--serif); font-size: 16px; line-height: 1.65; color: var(--fg-2); }
+.qa-answer p { margin: 0 0 14px; color: var(--fg-2); }
+.qa-answer p:last-child { margin-bottom: 0; }
+.qa-answer code { font-family: var(--mono); font-size: 0.88em; background: var(--bg-3); color: var(--gold-bright); padding: 2px 7px; border-radius: 3px; }
+.qa-answer strong { color: var(--fg); font-weight: 600; }
+
+/* TOPIC NAV */
+.topic-nav {
+  max-width: 820px;
+  margin: 60px auto 0;
+  padding: 32px 40px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.topic-nav a, .topic-nav .placeholder {
+  text-decoration: none;
+  color: inherit;
+  padding: 24px 22px;
+  border: 1px solid var(--line);
+  display: block;
+  transition: all 0.25s ease;
+}
+.topic-nav a:first-child { border-right: none; }
+.topic-nav a:hover { background: var(--gold-soft); border-color: var(--gold-deep); z-index: 2; position: relative; }
+.topic-nav .nav-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--fg-3);
+  margin-bottom: 10px;
+  display: block;
+}
+.topic-nav .nav-prev .nav-label::before { content: "← "; }
+.topic-nav .nav-next { text-align: right; }
+.topic-nav .nav-next .nav-label::after { content: " →"; }
+.topic-nav .nav-title { font-family: var(--serif); font-size: 18px; font-weight: 400; line-height: 1.3; letter-spacing: -0.01em; color: var(--fg); }
+.topic-nav a:hover .nav-title { color: var(--gold); }
+.topic-nav a:hover .nav-label { color: var(--gold); }
+.topic-nav .placeholder { opacity: 0.3; pointer-events: none; }
+.topic-nav .placeholder .nav-title { color: var(--fg-4); font-style: italic; font-weight: 300; }
+
+/* FOOTER */
+.footer {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 56px 40px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 24px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--fg-3);
+}
+.footer-mark { font-family: var(--serif); font-style: italic; font-size: 22px; font-weight: 300; color: var(--gold); text-transform: none; letter-spacing: 0; text-align: center; }
+.footer .right { text-align: right; }
+.footer a { color: var(--fg-3); text-decoration: none; transition: color 0.2s ease; }
+.footer a:hover { color: var(--gold); }
+
+/* RESPONSIVE */
+@media (max-width: 720px) {
+  .topbar { padding: 16px 20px; font-size: 9px; letter-spacing: 0.18em; }
+  .topbar .nav-right { gap: 14px; }
+  .topbar .sep { display: none; }
+  .topic-page-header { padding: 48px 20px 36px; }
+  .topic-page { padding: 0 20px 60px; }
+  .topic-nav { padding: 24px 20px; grid-template-columns: 1fr; }
+  .topic-nav a:first-child { border-right: 1px solid var(--line); border-bottom: none; }
+  .topic-nav .nav-next { text-align: left; }
+  .topic-nav .nav-next .nav-label::after { content: " →"; }
+  .footer { padding: 36px 20px; grid-template-columns: 1fr; text-align: center; gap: 14px; }
+  .footer .right { text-align: center; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="topbar">
+  <a href="index.html" class="brand">Embedded Systems Mastery</a>
+  <span class="nav-right">
+    <a href="HB6.html">HB6 Index</a>
+    <span class="sep">·</span>
+    <span>Topic 02</span>
+  </span>
+</div>
+
+<header class="topic-page-header">
+  <div class="topic-crumbs">
+    <a href="index.html">Series</a>
+    <span class="dot">·</span>
+    <a href="HB6.html">HB6</a>
+    <span class="dot">·</span>
+    <span class="current">Topic 02</span>
+  </div>
+  <div class="topic-page-meta">
+    <span class="topic-num-badge">Topic 02</span>
+    <span>·</span>
+    <span>HB6 · Serial &amp; Field-Bus Communication Protocols</span>
+  </div>
+  <h1>SPI — Modes, <span class="em">Multi-Slave,</span> QSPI / OSPI</h1>
+  <p class="lede">CPOL and CPHA decoded once and for all, chip-select strategies for single and multi-device buses, daisy-chain wiring, DMA-driven transfers, and the leap to quad and octal SPI for external flash.</p>
+</header>
+
+<article class="topic-page">
+  <div class="prose">
+
+<p>The Serial Peripheral Interface is the oldest trick in the embedded playbook — four wires, full duplex, no addressing overhead — and it remains the fastest synchronous bus you can hang off a microcontroller without going to a dedicated high-speed interface. Flash memories, ADCs, DACs, displays, IMUs, and RF transceivers all speak SPI. Yet SPI has exactly one standard: Motorola's 1979 spec, which left the clock polarity and phase entirely to the implementer. The result is four incompatible clock modes and a 40-year tradition of engineers spending an afternoon staring at a logic analyser trying to figure out why the sensor is not responding.</p>
+
+<p>This topic clears that up permanently, then covers everything that follows: how to manage multiple slaves on one bus, how to pipeline transfers with DMA, and how the SPI lineage evolved into Quad-SPI and Octal-SPI for feeding high-speed NOR flash to cache-hungry MCUs.</p>
+
+<h2>The <span class="em">four wires</span> and what they do</h2>
+
+<p>A standard SPI bus has four signals. The naming varies by vendor — Motorola, Intel, and ARM all use slightly different mnemonics — but the function is always the same.</p>
+
+<div class="table-wrap">
+<table class="prose-table">
+<thead>
+<tr><th>Signal</th><th>Motorola</th><th>Intel</th><th>Direction</th><th>Function</th></tr>
+</thead>
+<tbody>
+<tr><td>Clock</td><td>SCLK</td><td>CLK</td><td>Master → Slave</td><td>Shift clock generated by master</td></tr>
+<tr><td>Master Out</td><td>MOSI</td><td>SDO</td><td>Master → Slave</td><td>Data from master to slave</td></tr>
+<tr><td>Master In</td><td>MISO</td><td>SDI</td><td>Slave → Master</td><td>Data from slave to master</td></tr>
+<tr><td>Chip Select</td><td>CS̄ / SS̄</td><td>CS̄</td><td>Master → Slave</td><td>Active-low slave enable</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>SPI is <em>full duplex</em>: every clock edge simultaneously shifts one bit out of the master and one bit into the master. Both sides maintain a shift register; at the end of N clock cycles both have exchanged N bits. If you only want to write to a slave, you ignore MISO. If you only want to read, you clock out dummy bytes (typically <code>0x00</code> or <code>0xFF</code>) to generate the clocks the slave needs to push data back.</p>
+
+<div class="diagram">  Standard SPI — single master, single slave
+
+        Master                         Slave
+  ┌─────────────────┐           ┌─────────────────┐
+  │                 │──── SCLK ─►│                 │
+  │                 │──── MOSI ─►│                 │
+  │                 │◄─── MISO ──│                 │
+  │                 │──── CS̄  ──►│                 │
+  └─────────────────┘           └─────────────────┘
+
+  CS̄  ‾‾‾‾‾‾‾╮                        ╭‾‾‾‾‾‾‾
+             ╰────────────────────────╯
+  SCLK       ╭─╮ ╭─╮ ╭─╮ ╭─╮ ╭─╮ ╭─╮ ╭─╮ ╭─╮
+              ╰─╯ ╰─╯ ╰─╯ ╰─╯ ╰─╯ ╰─╯ ╰─╯ ╰─╯
+  MOSI       ─╔═══════════════════════════════╗─
+              ║   D7  D6  D5  D4  D3  D2  D1  D0  ║
+  MISO       ─╔═══════════════════════════════╗─
+              ║   D7  D6  D5  D4  D3  D2  D1  D0  ║</div>
+<p class="diagram-caption">CS̄ assertion begins the transfer; de-assertion latches the final byte into the slave.</p>
+
+<h2>CPOL and CPHA — <span class="em">the four modes</span></h2>
+
+<p>Two bits control the clock relationship: <em>CPOL</em> (Clock Polarity) sets the idle state of SCLK, and <em>CPHA</em> (Clock Phase) decides which edge — leading or trailing — is used to sample data. The combination produces four modes, conventionally numbered 0 to 3.</p>
+
+<div class="table-wrap">
+<table class="prose-table">
+<thead>
+<tr><th>Mode</th><th>CPOL</th><th>CPHA</th><th>Clock idle</th><th>Data captured on</th><th>Data shifted on</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>0</td><td>0</td><td>Low</td><td>Rising edge</td><td>Falling edge</td></tr>
+<tr><td>1</td><td>0</td><td>1</td><td>Low</td><td>Falling edge</td><td>Rising edge</td></tr>
+<tr><td>2</td><td>1</td><td>0</td><td>High</td><td>Falling edge</td><td>Rising edge</td></tr>
+<tr><td>3</td><td>1</td><td>1</td><td>High</td><td>Rising edge</td><td>Falling edge</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>The vast majority of sensors and memory devices use <em>Mode 0</em> (CPOL=0, CPHA=0): clock idles low, data is driven by the master on the falling edge of CS̄ and on each falling edge of SCLK, and sampled by the slave on the rising edge. Mode 3 (CPOL=1, CPHA=1) is the other common choice — clock idles high, data is shifted on rising edges and sampled on falling — and it produces the same capture/shift relationship from the slave's perspective, just with the polarity inverted.</p>
+
+<div class="diagram">  Mode 0 (CPOL=0 CPHA=0) — most common
+
+  CS̄  ‾╮                             ╭‾
+       ╰─────────────────────────────╯
+  SCLK   ╭─╮  ╭─╮  ╭─╮  ╭─╮  ╭─╮  ╭─╮
+          ╰─╯  ╰─╯  ╰─╯  ╰─╯  ╰─╯  ╰─╯
+         ↑    ↑    ↑    ↑    ↑    ↑
+         Sample on rising edge (CPHA=0)
+
+  Mode 1 (CPOL=0 CPHA=1)
+
+  SCLK   ╭─╮  ╭─╮  ╭─╮  ╭─╮  ╭─╮  ╭─╮
+          ╰─╯  ╰─╯  ╰─╯  ╰─╯  ╰─╯  ╰─╯
+           ↓    ↓    ↓    ↓    ↓    ↓
+           Sample on falling edge (CPHA=1)
+
+  Mode 2 (CPOL=1 CPHA=0) — clock inverted vs Mode 1
+  Mode 3 (CPOL=1 CPHA=1) — clock inverted vs Mode 0</div>
+
+<div class="callout key">
+<div class="callout-label">Key Idea</div>
+<p>Mode 0 and Mode 3 are functionally equivalent from the slave's view of setup and hold timing — data is stable for the same fraction of the clock period in both. The only difference is whether idle SCLK is low or high. If a device says "SPI Mode 0 or Mode 3", it means it can tolerate either idle polarity and will still sample correctly. Always confirm with the datasheet's timing diagram — the <em>tSU</em> (setup) and <em>tH</em> (hold) numbers are what matter for reliability, not the mode number.</p>
+</div>
+
+<h3>How to read the datasheet timing diagram</h3>
+
+<p>Every SPI peripheral datasheet contains a timing diagram. Reading it correctly prevents most mode-selection mistakes. Look for three things: the level of SCLK before CS̄ asserts (CPOL), whether the first data bit appears before the first clock edge or after it (CPHA=0 vs CPHA=1), and which edge has the arrow labelled "data valid" or "sample point".</p>
+
+<div class="callout warn">
+<div class="callout-label">Common Mistake</div>
+<p>Some datasheets describe their SPI interface as "SPI-compatible" without naming the mode. They instead say something like <em>"data is clocked in on the rising edge of SCK, with SCK idle low."</em> That is Mode 0. When you see "clocked in on falling edge, SCK idle low" that is Mode 1. Translate prose to CPOL/CPHA yourself rather than guessing a mode number.</p>
+</div>
+
+<h2>Chip-select <span class="em">strategies</span></h2>
+
+<p>CS̄ is the SPI bus's substitute for I2C addressing. Each slave gets its own dedicated CS̄ line from the master. The master selects a device by asserting (pulling low) its CS̄ line. All un-selected slaves hold their MISO lines in a high-impedance state, letting the selected device drive the shared bus without contention.</p>
+
+<h3>Single slave — the simple case</h3>
+
+<p>One master, one slave: one GPIO drives CS̄. The only subtlety is timing. The setup time between CS̄ assertion and the first SCLK edge (called <em>tCSS</em> or <em>tCS-to-SCK</em>) must satisfy the slave's minimum requirement, typically 20–100 ns. The hold time after the last clock edge before de-assertion (<em>tCSH</em>) must also be respected. When using a hardware SPI peripheral, the peripheral's NSS (or SS) output manages this automatically. When bit-banging, add a <code>__NOP()</code> or a short delay between GPIO writes.</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">spi_transfer.c — software CS with timing margin</span></div>
+<pre><code><span class="tok-pp">#include</span> <span class="tok-str">"stm32f4xx_hal.h"</span>
+
+<span class="tok-kw">static</span> <span class="tok-kw">inline</span> <span class="tok-kw">void</span> <span class="tok-fn">cs_assert</span>(<span class="tok-kw">void</span>)
+{
+    <span class="tok-fn">HAL_GPIO_WritePin</span>(<span class="tok-reg">SPI_CS_GPIO_Port</span>, <span class="tok-reg">SPI_CS_Pin</span>, <span class="tok-reg">GPIO_PIN_RESET</span>);
+    <span class="tok-com">/* tCSS: ≥ 20 ns for most sensors — 1 NOP @ 168 MHz ≈ 6 ns,
+     * so 4 NOPs give comfortable margin */</span>
+    <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>();
+}
+
+<span class="tok-kw">static</span> <span class="tok-kw">inline</span> <span class="tok-kw">void</span> <span class="tok-fn">cs_deassert</span>(<span class="tok-kw">void</span>)
+{
+    <span class="tok-com">/* tCSH: ≥ 50 ns before next transfer on many devices */</span>
+    <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>();
+    <span class="tok-fn">HAL_GPIO_WritePin</span>(<span class="tok-reg">SPI_CS_GPIO_Port</span>, <span class="tok-reg">SPI_CS_Pin</span>, <span class="tok-reg">GPIO_PIN_SET</span>);
+}
+
+<span class="tok-type">HAL_StatusTypeDef</span> <span class="tok-fn">spi_write_reg</span>(<span class="tok-type">uint8_t</span> reg, <span class="tok-type">uint8_t</span> val)
+{
+    <span class="tok-type">uint8_t</span> buf[<span class="tok-num">2</span>] = { reg &amp; <span class="tok-num">0x7F</span>, val }; <span class="tok-com">/* clear MSB = write command */</span>
+    <span class="tok-fn">cs_assert</span>();
+    <span class="tok-type">HAL_StatusTypeDef</span> st = <span class="tok-fn">HAL_SPI_Transmit</span>(&amp;<span class="tok-reg">hspi1</span>, buf, <span class="tok-kw">sizeof</span>(buf), <span class="tok-num">10</span>);
+    <span class="tok-fn">cs_deassert</span>();
+    <span class="tok-kw">return</span> st;
+}
+
+<span class="tok-type">HAL_StatusTypeDef</span> <span class="tok-fn">spi_read_reg</span>(<span class="tok-type">uint8_t</span> reg, <span class="tok-type">uint8_t</span> *val)
+{
+    <span class="tok-type">uint8_t</span> tx = reg | <span class="tok-num">0x80</span>; <span class="tok-com">/* set MSB = read command */</span>
+    <span class="tok-type">uint8_t</span> rx = <span class="tok-num">0</span>;
+    <span class="tok-fn">cs_assert</span>();
+    <span class="tok-type">HAL_StatusTypeDef</span> st = <span class="tok-fn">HAL_SPI_TransmitReceive</span>(&amp;<span class="tok-reg">hspi1</span>, &amp;tx, &amp;rx, <span class="tok-num">1</span>, <span class="tok-num">10</span>);
+    <span class="tok-fn">cs_deassert</span>();
+    *val = rx;
+    <span class="tok-kw">return</span> st;
+}</code></pre>
+</div>
+
+<h3>Multi-slave — independent chip selects</h3>
+
+<p>The standard multi-device topology gives each slave its own dedicated CS̄ GPIO. SCLK, MOSI, and MISO are shared. Only one CS̄ is asserted at any time — driving two low simultaneously would put two slaves' MISO drivers in conflict.</p>
+
+<div class="diagram">  Multi-slave: independent CS lines
+
+            Master
+      ┌──────────────────────┐
+      │  SCLK ───────────────┼──────┬──────┬──────┐
+      │  MOSI ───────────────┼──────┼──────┼──────┤
+      │  MISO ───────────────┼──────┼──────┼──────┤
+      │  CS0  ───────────────┼─► S0 │      │      │
+      │  CS1  ───────────────┼──────┼─► S1 │      │
+      │  CS2  ───────────────┼──────┼──────┼─► S2 │
+      └──────────────────────┘      │      │      │
+                                  Slave0 Slave1 Slave2
+
+  Only one CS asserted at a time.
+  Inactive slaves MISO = Hi-Z.</div>
+
+<p>The limitation is GPIO count. A microcontroller with one SPI peripheral can theoretically drive as many slaves as it has spare GPIO pins. In practice, three to six slaves on a single bus is comfortable; beyond that, bus capacitance degrades the signal quality at high speed and you should consider a second SPI peripheral or a dedicated demultiplexer IC.</p>
+
+<h3>Daisy-chain topology</h3>
+
+<p>Daisy chaining is the alternative when GPIO pins are scarce and you need to address several identical devices — shift registers (74HC595), LED drivers (TLC5940), or programmable logic devices are classic examples. All devices share a single CS̄ line. MOSI connects to the first device's data input; that device's serial output connects to the second device's input, and so on. MISO returns from the last device in the chain.</p>
+
+<div class="diagram">  Daisy-chain topology — single CS, N devices
+
+  Master
+  ┌────────────┐
+  │ SCLK ──────┼───────────────────────────────────────────►
+  │ CS̄   ──────┼───────────────────────────────────────────►  (all slaves)
+  │            │     ┌────────┐     ┌────────┐     ┌────────┐
+  │ MOSI ──────┼────►│  DIN   │     │  DIN   │     │  DIN   │
+  │            │     │ Slave0 │     │ Slave1 │     │ Slave2 │
+  │ MISO ◄─────┼─────│  DOUT ─┼────►│  DOUT ─┼────►│  DOUT  │
+  └────────────┘     └────────┘     └────────┘     └────────┘
+                         ▲               ▲               ▲
+                       SCLK &amp; CS̄ connected in parallel</div>
+
+<p>To program N daisy-chained devices, the master transmits N × <em>word_size</em> bits with CS̄ held low the entire time. Each clock shifts data one step further down the chain. When CS̄ rises, all devices latch the word that reached their input register. The first device in the chain receives the last byte transmitted; the last device receives the first byte. This reversal must be accounted for when assembling the transmit buffer.</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">daisy_chain.c — write N 74HC595 shift registers</span></div>
+<pre><code><span class="tok-pp">#define</span> <span class="tok-reg">NUM_DEVICES</span>  <span class="tok-num">3</span>
+
+<span class="tok-com">/* values[0] goes to the LAST device (first to latch when CS rises),
+ * values[N-1] goes to the FIRST device in the chain.            */</span>
+<span class="tok-kw">void</span> <span class="tok-fn">daisy_write</span>(<span class="tok-kw">const</span> <span class="tok-type">uint8_t</span> values[<span class="tok-reg">NUM_DEVICES</span>])
+{
+    <span class="tok-type">uint8_t</span> buf[<span class="tok-reg">NUM_DEVICES</span>];
+    <span class="tok-com">/* Reverse: last element of values → first byte on MOSI */</span>
+    <span class="tok-kw">for</span> (<span class="tok-type">int</span> i = <span class="tok-num">0</span>; i &lt; <span class="tok-reg">NUM_DEVICES</span>; i++)
+        buf[i] = values[<span class="tok-reg">NUM_DEVICES</span> - <span class="tok-num">1</span> - i];
+
+    <span class="tok-fn">cs_assert</span>();
+    <span class="tok-fn">HAL_SPI_Transmit</span>(&amp;<span class="tok-reg">hspi1</span>, buf, <span class="tok-reg">NUM_DEVICES</span>, <span class="tok-num">10</span>);
+    <span class="tok-fn">cs_deassert</span>();   <span class="tok-com">/* rising edge latches data into all output registers */</span>
+}</code></pre>
+</div>
+
+<div class="callout warn">
+<div class="callout-label">Daisy-Chain Gotcha</div>
+<p>Daisy chaining does not work if devices need to simultaneously <em>output</em> different data — the chain only works for devices where DOUT is a pure pass-through of previously received data, not a status response. ADCs and sensors with bidirectional SPI cannot be daisy-chained; use independent CS lines for those.</p>
+</div>
+
+<h2>DMA-driven <span class="em">SPI transfers</span></h2>
+
+<p>Blocking SPI transfers (<code>HAL_SPI_Transmit</code> with a timeout) burn CPU cycles waiting for each byte to shift out. At 10 MHz and 8-bit frames, one byte takes 800 ns — time the CPU could be doing something else. DMA fixes this: configure the DMA controller to feed bytes to the SPI shift register autonomously, fire the transfer, and let the CPU continue until a DMA-complete interrupt signals that the buffer is done.</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">spi_dma.c — non-blocking DMA transmit (STM32 HAL)</span></div>
+<pre><code><span class="tok-kw">volatile</span> <span class="tok-type">uint8_t</span> spi_busy = <span class="tok-num">0</span>;
+
+<span class="tok-com">/* Called from HAL_SPI_TxCpltCallback */</span>
+<span class="tok-kw">void</span> <span class="tok-fn">HAL_SPI_TxCpltCallback</span>(<span class="tok-type">SPI_HandleTypeDef</span> *hspi)
+{
+    <span class="tok-kw">if</span> (hspi->Instance == <span class="tok-reg">SPI1</span>) {
+        <span class="tok-fn">cs_deassert</span>();
+        spi_busy = <span class="tok-num">0</span>;
+    }
+}
+
+<span class="tok-com">/* Non-blocking transmit — caller must wait for spi_busy == 0 */</span>
+<span class="tok-type">HAL_StatusTypeDef</span> <span class="tok-fn">spi_transmit_dma</span>(<span class="tok-type">uint8_t</span> *buf, <span class="tok-type">uint16_t</span> len)
+{
+    <span class="tok-kw">if</span> (spi_busy) <span class="tok-kw">return</span> <span class="tok-reg">HAL_BUSY</span>;
+    spi_busy = <span class="tok-num">1</span>;
+    <span class="tok-fn">cs_assert</span>();
+    <span class="tok-com">/* DMA feeds bytes into SPI->DR autonomously */</span>
+    <span class="tok-kw">return</span> <span class="tok-fn">HAL_SPI_Transmit_DMA</span>(&amp;<span class="tok-reg">hspi1</span>, buf, len);
+}
+
+<span class="tok-com">/* Usage */</span>
+<span class="tok-kw">void</span> <span class="tok-fn">display_refresh</span>(<span class="tok-kw">void</span>)
+{
+    <span class="tok-com">/* frame_buf is SRAM — must remain valid until spi_busy == 0 */</span>
+    <span class="tok-kw">while</span> (spi_busy) {}          <span class="tok-com">/* wait for prior frame */</span>
+    <span class="tok-fn">spi_transmit_dma</span>(frame_buf, <span class="tok-kw">sizeof</span>(frame_buf));
+    <span class="tok-com">/* CPU is free to do other work now */</span>
+}</code></pre>
+</div>
+
+<div class="callout warn">
+<div class="callout-label">DMA Buffer Rules — Critical</div>
+<p>On Cortex-M7 (STM32H7, i.MX RT) the D-cache and DMA controller operate independently. If <code>frame_buf</code> is in a cached region, the CPU's writes may sit in cache and never reach SRAM before DMA reads it — producing corrupted output. The fix is to either place DMA buffers in a non-cacheable memory region (configured via MPU), or manually call <code>SCB_CleanDCache_by_Addr()</code> before starting the transfer. This is one of the most common sources of hard-to-reproduce SPI bugs on M7-class devices.</p>
+</div>
+
+<h2>Timing, speed, and <span class="em">signal integrity</span></h2>
+
+<p>SPI has no formal maximum speed in its original spec — it is limited by the weakest link on the bus. In practice, four factors determine how fast you can reliably run.</p>
+
+<h3>PCB trace capacitance</h3>
+<p>Each millimetre of FR4 trace adds roughly 0.5–1 pF. At 50 MHz and a typical 10 Ω drive impedance, the RC time constant from 10 Ω × 20 pF = 0.2 ns — well within budget. At 100 MHz over 100 mm of trace, you start to need controlled impedance and termination. For most embedded SPI at under 20 MHz over under 50 mm, this is not a concern.</p>
+
+<h3>Slave input clock frequency limit</h3>
+<p>Every SPI slave datasheet specifies a maximum <em>fSCLK</em>. Flash memories might tolerate 133 MHz in fast-read mode. A low-cost ADC might cap at 20 MHz. The master must not exceed the slowest device on the shared bus.</p>
+
+<h3>GPIO toggle rate (bit-banged SPI)</h3>
+<p>On an STM32F4 running at 168 MHz, a tight GPIO toggle loop achieves roughly 21 MHz per bit — around 2.6 Mbit/s for 8-bit frames with the loop overhead. Hardware SPI peripheral at the same clock can reach 42 MHz (APB2/2). If you need speed, always use the hardware peripheral.</p>
+
+<h3>The NSS (Slave Select) hardware pin gotcha</h3>
+<p>STM32 SPI peripherals have a hardware NSS pin. In <em>NSS hardware mode</em>, the peripheral drives NSS automatically — but it de-asserts between every byte if the data size is 8 bits, which is almost never what you want for multi-byte transfers. The standard approach is to configure NSS as software-controlled (<code>SPI_NSS_SOFT</code>) and drive a regular GPIO manually, giving full control over when CS̄ asserts and de-asserts.</p>
+
+<h2>Quad-SPI and <span class="em">Octal-SPI</span> — feeding the flash cache</h2>
+
+<p>Standard SPI sends one bit per clock cycle on MOSI. When an MCU executes code from external NOR flash — a common architecture on resource-constrained parts where internal flash is too small — a 133 MHz SPI gives at most 133 Mbit/s = 16 MB/s of read bandwidth. That sounds fast, but a Cortex-M7 at 480 MHz can fetch instructions much faster than a serial flash can supply them. The answer is to widen the data bus.</p>
+
+<h3>Dual SPI — 2 data lines</h3>
+<p>Dual SPI adds a second data line, so two bits transfer per clock. MOSI and MISO both become bidirectional data lines (IO0 and IO1) during the data phase, doubling throughput to 266 Mbit/s at 133 MHz. The command and address phases are still single-line.</p>
+
+<h3>Quad SPI (QSPI) — 4 data lines</h3>
+<p>QSPI uses four IO lines (IO0–IO3) simultaneously during the data phase — four bits per clock, quadrupling standard SPI throughput. At 133 MHz that is 532 Mbit/s ≈ 66 MB/s, which is enough to comfortably supply a 480 MHz Cortex-M7 instruction fetch. The STM32H7's QUADSPI peripheral supports this natively. The flash must support quad mode and be explicitly put into it with a Write Enable → Write Status Register sequence before quad reads work.</p>
+
+<div class="diagram">  Standard SPI vs Quad-SPI data phase
+
+  Standard SPI (1-bit wide):
+  SCLK  ╭─╮╭─╮╭─╮╭─╮╭─╮╭─╮╭─╮╭─╮
+  MOSI  ─╔═╦═╦═╦═╦═╦═╦═╦═╗─   8 clocks = 1 byte
+         D7 D6 D5 D4 D3 D2 D1 D0
+
+  Quad-SPI (4-bit wide) — data phase only:
+  SCLK  ╭─╮╭─╮
+  IO0   ─╔═╦═╗─   bit 7,3
+  IO1   ─╔═╦═╗─   bit 6,2
+  IO2   ─╔═╦═╗─   bit 5,1
+  IO3   ─╔═╦═╗─   bit 4,0
+         ↑  ↑
+         2 clocks = 1 byte   (4× faster than standard)</div>
+
+<h3>Octal SPI (OSPI) — 8 data lines</h3>
+<p>OSPI extends the concept to eight simultaneous data lines (IO0–IO7). One clock cycle transfers one full byte. At 200 MHz DDR (both clock edges used), OSPI delivers 400 MT/s = 400 MB/s — enough to sustain even Cortex-A-class instruction fetch from external flash. The STM32U5 and some NXP i.MX RT parts include OSPI peripherals. The PCB layout demands careful attention to trace length matching and controlled impedance at these speeds.</p>
+
+<div class="table-wrap">
+<table class="prose-table">
+<thead>
+<tr><th>Mode</th><th>Data lines</th><th>Bits/cycle</th><th>Throughput @ 133 MHz</th><th>Typical use</th></tr>
+</thead>
+<tbody>
+<tr><td>Standard SPI</td><td>1</td><td>1</td><td>133 Mbit/s — 16 MB/s</td><td>Sensors, ADC, display</td></tr>
+<tr><td>Dual SPI</td><td>2</td><td>2</td><td>266 Mbit/s — 33 MB/s</td><td>Medium-speed flash</td></tr>
+<tr><td>QSPI (×4)</td><td>4</td><td>4</td><td>532 Mbit/s — 66 MB/s</td><td>External flash XIP on M7</td></tr>
+<tr><td>OSPI (×8 SDR)</td><td>8</td><td>8</td><td>1064 Mbit/s — 133 MB/s</td><td>XIP on high-perf MCU</td></tr>
+<tr><td>OSPI (×8 DDR)</td><td>8</td><td>16</td><td>2128 Mbit/s — 266 MB/s</td><td>High-bandwidth storage</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Memory-mapped (XIP) mode</h3>
+<p>QSPI and OSPI peripherals on modern MCUs support a <em>memory-mapped</em> mode, also called Execute-in-Place (XIP). The peripheral sits at a fixed address range in the CPU's memory map (e.g., <code>0x90000000</code> on STM32H7). When the CPU fetches an instruction or reads data from that range, the QSPI peripheral automatically translates the access into a fast-read SPI transaction, caches the result in a small internal FIFO, and returns the data with minimal latency. From the CPU's perspective, external flash looks like ordinary SRAM. The penalty is one burst miss latency; subsequent accesses into the same cache line are served at full bus speed.</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">qspi_init.c — STM32H7 QUADSPI in memory-mapped mode</span></div>
+<pre><code><span class="tok-pp">#include</span> <span class="tok-str">"stm32h7xx_hal.h"</span>
+
+<span class="tok-kw">static</span> <span class="tok-type">QSPI_HandleTypeDef</span> hqspi;
+
+<span class="tok-type">HAL_StatusTypeDef</span> <span class="tok-fn">qspi_memory_map</span>(<span class="tok-kw">void</span>)
+{
+    <span class="tok-type">QSPI_CommandTypeDef</span>      cmd  = {<span class="tok-num">0</span>};
+    <span class="tok-type">QSPI_MemoryMappedTypeDef</span> mmap = {<span class="tok-num">0</span>};
+
+    <span class="tok-com">/* W25Q128 quad fast-read: opcode 0xEB, 4-byte address,
+     * 4-line address + data, 6 dummy cycles                */</span>
+    cmd.InstructionMode   = <span class="tok-reg">QSPI_INSTRUCTION_1_LINE</span>;
+    cmd.Instruction       = <span class="tok-num">0xEB</span>;          <span class="tok-com">/* QPI fast read */</span>
+    cmd.AddressMode       = <span class="tok-reg">QSPI_ADDRESS_4_LINES</span>;
+    cmd.AddressSize       = <span class="tok-reg">QSPI_ADDRESS_24_BITS</span>;
+    cmd.AlternateByteMode = <span class="tok-reg">QSPI_ALTERNATE_BYTES_NONE</span>;
+    cmd.DataMode          = <span class="tok-reg">QSPI_DATA_4_LINES</span>;
+    cmd.DummyCycles       = <span class="tok-num">6</span>;
+    cmd.DdrMode           = <span class="tok-reg">QSPI_DDR_MODE_DISABLE</span>;
+    cmd.SIOOMode          = <span class="tok-reg">QSPI_SIOO_INST_EVERY_CMD</span>;
+
+    mmap.TimeOutActivation = <span class="tok-reg">QSPI_TIMEOUT_COUNTER_DISABLE</span>;
+
+    <span class="tok-kw">return</span> <span class="tok-fn">HAL_QSPI_MemoryMapped</span>(&amp;hqspi, &amp;cmd, &amp;mmap);
+    <span class="tok-com">/* After this call, 0x90000000 aliases the flash array.
+     * Linker can place code or read-only data at 0x90xxxxxx. */</span>
+}</code></pre>
+</div>
+
+<div class="callout key">
+<div class="callout-label">Key Idea</div>
+<p>Once QSPI memory-mapped mode is active, the MCU's ART accelerator (on STM32 parts) or I-cache (on Cortex-M7) works on the XIP region just as it does on internal flash. The typical measured throughput for sequential instruction fetch from a W25Q128 at 133 MHz QSPI on an STM32H743 is around 50–55 MB/s — more than adequate for most application code. Only the most compute-intensive inner loops benefit from being placed in SRAM or ITCM.</p>
+</div>
+
+<h2>Selecting <span class="em">the right SPI topology</span></h2>
+
+<p>Before writing a single line of driver code, answer four questions: how many slaves, do they all use the same mode, how fast do you need the bus, and does any device need full-duplex. The answers determine your wiring topology.</p>
+
+<div class="diagram">  SPI topology decision flowchart
+
+  ┌────────────────────────────────────────┐
+  │  Do any slaves need bidirectional data │
+  │  (read-back responses, not just write)?│
+  └────────────────────────────────────────┘
+         │ yes                │ no
+         ▼                    ▼
+   Use independent       Daisy-chain
+   CS per slave.         possible.
+         │
+         ▼
+  ┌────────────────────────────────────────┐
+  │  Number of slaves?                     │
+  └────────────────────────────────────────┘
+      1  ──► Simple single-CS             │
+    2-6  ──► Independent CS lines         │
+     6+  ──► CS expander (74HC138 demux)  │
+         │
+         ▼
+  ┌────────────────────────────────────────┐
+  │  Do all slaves use the same SPI mode?  │
+  └────────────────────────────────────────┘
+         │ yes ──► One SPI peripheral
+         │ no  ──► Separate SPI peripheral per mode group,
+         │         or reconfigure mode between transfers
+         │         (requires CS de-assertion between changes)</div>
+
+<p>Mixing SPI modes on one bus is possible but painful. Changing CPOL/CPHA requires de-asserting all CS lines, reconfiguring the SPI peripheral, and re-asserting the target CS. If you have both a Mode-0 sensor and a Mode-3 EEPROM, consider whether a second SPI peripheral (most mid-range MCUs have two to four) is simpler than mode-switching logic.</p>
+
+<h2>Common <span class="em">debugging patterns</span></h2>
+
+<p>SPI problems almost always fall into one of five categories. Knowing which symptoms point to which cause saves hours at the logic analyser.</p>
+
+<h3>All reads return 0x00 or 0xFF</h3>
+<p>The slave's MISO line is not driven. Either CS̄ is never asserted (check your GPIO direction and polarity), the slave needs a power sequence or enable pin toggled before it outputs data, or the SPI mode is wrong and the slave is not interpreting commands. With a logic analyser, confirm CS̄ goes low, SCLK toggles, and MISO shows something other than a flat line.</p>
+
+<h3>First byte correct, subsequent bytes garbled</h3>
+<p>Classic CPHA mismatch. The slave shifts data on the opposite edge from what you have configured. The first bit is sometimes coincidentally correct (held from before the transfer began), but subsequent bits are captured half a cycle early or late. Flip CPHA and re-test.</p>
+
+<h3>Data correct at low speed, corrupted above N MHz</h3>
+<p>Setup or hold timing violation. The slave needs more time between CS̄ assertion and the first clock, or between the last clock and CS̄ de-assertion. Check tCSS and tCSH in the datasheet and add delays. It could also be PCB signal integrity — scope the SCLK line at the slave's pin (not the master's) and look for ringing or slow edges.</p>
+
+<h3>DMA transfer corrupts data on H7/M7</h3>
+<p>Cache coherency. The CPU wrote data to a cached buffer, but DMA reads from SRAM before the cache line was flushed. Call <code>SCB_CleanDCache_by_Addr((uint32_t *)buf, len)</code> before starting the DMA, or place SPI DMA buffers in the <code>.dma_buffers</code> section mapped to a non-cacheable MPU region.</p>
+
+<h3>QSPI flash returns wrong data in memory-mapped mode</h3>
+<p>The flash was not correctly put into quad-enable mode before switching to memory-mapped reads. The Quad Enable bit in the flash's Status Register 2 must be set with a Write Enable → Write Status Register sequence, then verified with a Read Status Register. Without this, quad reads silently return garbage because the flash is still in single-line mode while the MCU is clocking four data lines.</p>
+
+  </div><!-- /prose -->
+
+  <div class="qa-section">
+  <div class="qa-section-head">
+    <div class="label">Interview Questions</div>
+    <h2>Interview Q &amp; A — <span class="em">SPI</span></h2>
+  </div>
+
+  <div class="qa">
+    <div class="qa-q">
+      <span class="qa-num">Q1.</span>
+      <span class="qa-question">What do CPOL and CPHA actually control, and how do you determine the correct mode for a device?</span>
+    </div>
+    <div class="qa-answer">
+      <p><strong>CPOL</strong> (Clock Polarity) sets the idle state of SCLK: CPOL=0 means SCLK rests low, CPOL=1 means it rests high. <strong>CPHA</strong> (Clock Phase) controls which edge is the data-capture edge: CPHA=0 captures on the leading (first) edge, CPHA=1 captures on the trailing (second) edge.</p>
+      <p>To determine the correct mode, read the device datasheet timing diagram. Find the idle state of SCK before CS̄ asserts (gives CPOL), then find which edge has the "data valid" annotation (gives CPHA). Mode 0 (CPOL=0, CPHA=0) is correct for most sensors; Mode 3 (CPOL=1, CPHA=1) is its clock-inverted equivalent and equally common. Mode 1 and Mode 2 are rare in practice.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-q">
+      <span class="qa-num">Q2.</span>
+      <span class="qa-question">How does SPI daisy chaining work, and when can you NOT use it?</span>
+    </div>
+    <div class="qa-answer">
+      <p>In a daisy chain, all slaves share one CS̄ line. MOSI connects to the first slave's data input; each slave's serial output feeds the next slave's input. One CS̄ assert transmits N × word_size bits; when CS̄ rises, each device latches the word that arrived at its input. Because data ripples through the chain, the master must transmit bytes in reverse order — the first byte sent ends up in the last device.</p>
+      <p>Daisy chaining fails for any device that must simultaneously return read data while receiving write data — ADCs, sensors, EEPROMs with status bytes. In those cases the DOUT is not a transparent pass-through of DIN; it carries independent information. Only use daisy chains with devices designed for it (shift registers, LED drivers, some DACs).</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-q">
+      <span class="qa-num">Q3.</span>
+      <span class="qa-question">Why is SPI faster than I2C, and where does that speed advantage end?</span>
+    </div>
+    <div class="qa-answer">
+      <p>SPI has no overhead: no start/stop bits, no address byte, no ACK/NAK bits. Every clock cycle carries data. I2C uses an open-drain bus with a pull-up resistor and a strict protocol overhead of approximately 18 bits per byte (start, address, ACK, data, ACK, stop). SPI is also full duplex — both sides exchange data simultaneously — whereas I2C is half duplex with explicit direction changes.</p>
+      <p>The speed advantage ends where signal integrity does. Without the open-drain constraint of I2C, SPI can run at the push-pull GPIO drive strength and speed of the silicon — tens or hundreds of MHz. In practice, PCB capacitance, trace length matching, and slave input frequency limits are the binding constraints. For very short ranges (chip-to-chip on the same board), SPI wins decisively. For long cables or large buses with many nodes, CAN or RS-485 (with their robust differential signalling) are more appropriate than raw SPI.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-q">
+      <span class="qa-num">Q4.</span>
+      <span class="qa-question">What is Quad-SPI and why does it exist? When would you use it over standard SPI?</span>
+    </div>
+    <div class="qa-answer">
+      <p>QSPI uses four bidirectional data lines (IO0–IO3) during the data phase of a transfer instead of one. This delivers four bits per clock cycle — four times the throughput of standard SPI at the same clock frequency. OSPI extends this to eight lines.</p>
+      <p>QSPI exists primarily for execute-in-place (XIP) from external NOR flash. A Cortex-M7 at 400–480 MHz can stall waiting for instruction fetch if the flash bus cannot supply bytes fast enough. Standard SPI at 133 MHz gives ~16 MB/s; QSPI at 133 MHz gives ~66 MB/s — enough to sustain most firmware code paths without cache misses stalling the pipeline.</p>
+      <p>Use QSPI when: (1) your MCU needs to run code from external flash, (2) you are streaming large blocks of data from flash (audio, graphics) and raw transfer speed matters, or (3) you need the memory-mapped address space that QSPI peripherals provide. For ordinary sensor and peripheral communication, standard SPI at 1–40 MHz is perfectly adequate and simpler to design.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-q">
+      <span class="qa-num">Q5.</span>
+      <span class="qa-question">You are using DMA to transmit SPI data on a Cortex-M7 and getting corrupted output. What is the most likely cause and how do you fix it?</span>
+    </div>
+    <div class="qa-answer">
+      <p>The most likely cause is D-cache coherency. The Cortex-M7 has a separate data cache that operates independently of the DMA controller. When the CPU writes a buffer in cached SRAM, the data may remain in the cache lines and never be flushed to actual SRAM before DMA reads it — so DMA transfers stale data.</p>
+      <p>There are three standard fixes. First, call <code>SCB_CleanDCache_by_Addr((uint32_t *)buf, len)</code> (CMSIS function) after filling the buffer and before starting the DMA. This writes dirty cache lines back to SRAM. Second, allocate DMA buffers in a non-cacheable memory region by configuring the MPU to mark that SRAM region as non-cacheable — the CPU and DMA then always see the same data without any explicit flush. Third, place the buffer in DTCM (Tightly Coupled Memory), which is bypassed by the cache and always coherent, though DMA access to DTCM requires peripheral DMA support for that memory region (not all STM32 peripherals support it). The MPU non-cacheable approach is the most robust general solution.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-q">
+      <span class="qa-num">Q6.</span>
+      <span class="qa-question">How do you add more SPI slaves than you have GPIO pins?</span>
+    </div>
+    <div class="qa-answer">
+      <p>Three practical approaches, in order of complexity: <strong>Demultiplexer IC</strong> — a 74HC138 (3-to-8 decoder) converts 3 GPIO lines into 8 active-low CS outputs, giving you 8 slaves for the cost of 3 pins. <strong>Shift register</strong> — an 8-bit output shift register (74HC595, connected via SPI itself) gives 8 CS lines from 3 or 4 SPI signals; the trade-off is that asserting a CS requires a separate SPI transaction to clock out the CS pattern, adding latency before each main transfer. <strong>Daisy-chaining</strong> where suitable — if devices support it, this eliminates the CS count problem entirely at the cost of reduced flexibility and the byte-reversal complexity.</p>
+      <p>On heavily constrained designs, a second SPI peripheral (if the MCU has one) is often cleaner than any of the above — it adds zero CS management complexity and allows both buses to run simultaneously for doubled bandwidth.</p>
+    </div>
+  </div>
+
+  </div><!-- /qa-section -->
+
+</article>
+
+<nav class="topic-nav">
+  <a href="HB6.html" class="nav-prev">
+    <span class="nav-label">Back to</span>
+    <span class="nav-title">HB6 — Serial &amp; Field-Bus Protocols</span>
+  </a>
+  <a href="HB6-T03.html" class="nav-next">
+    <span class="nav-label">Next · Topic 03</span>
+    <span class="nav-title">I2C &amp; I3C — Arbitration &amp; Clock Stretching</span>
+  </a>
+</nav>
+
+<footer class="footer">
+  <span>HB6 · Topic 02 · Advanced</span>
+  <span class="footer-mark">§</span>
+  <span class="right"><a href="index.html">Series Index</a></span>
+</footer>
+
+</div>
+</body>
+</html>
