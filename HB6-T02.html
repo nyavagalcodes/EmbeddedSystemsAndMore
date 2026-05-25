@@ -556,42 +556,82 @@ body::after {
 <p>One master, one slave: one GPIO drives CS̄. The only subtlety is timing. The setup time between CS̄ assertion and the first SCLK edge (called <em>tCSS</em> or <em>tCS-to-SCK</em>) must satisfy the slave's minimum requirement, typically 20–100 ns. The hold time after the last clock edge before de-assertion (<em>tCSH</em>) must also be respected. When using a hardware SPI peripheral, the peripheral's NSS (or SS) output manages this automatically. When bit-banging, add a <code>__NOP()</code> or a short delay between GPIO writes.</p>
 
 <div class="codeblock">
-<div class="codeblock-head"><span class="lang">C</span><span class="file">spi_transfer.c — software CS with timing margin</span></div>
-<pre><code><span class="tok-pp">#include</span> <span class="tok-str">"stm32f4xx_hal.h"</span>
+<div class="codeblock-head"><span class="lang">C</span><span class="file">spi_driver.h — register map (adapt base address to your MCU)</span></div>
+<pre><code><span class="tok-com">/* Change SPI_BASE to match your MCU's SPI peripheral address.
+ * STM32F4 SPI1: 0x40013000  |  nRF52840 SPI0: 0x40003000
+ * RP2040  SPI0: 0x4003C000  |  Check your reference manual.  */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">SPI_BASE</span>        <span class="tok-num">0x40013000UL</span>
 
-<span class="tok-kw">static</span> <span class="tok-kw">inline</span> <span class="tok-kw">void</span> <span class="tok-fn">cs_assert</span>(<span class="tok-kw">void</span>)
+<span class="tok-com">/* Register map — volatile pointer dereference of base + offset */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">SPI_CR1</span>  (<span class="tok-op">*</span>(<span class="tok-kw">volatile</span> <span class="tok-type">uint32_t</span> <span class="tok-op">*</span>)(<span class="tok-reg">SPI_BASE</span> <span class="tok-op">+</span> <span class="tok-num">0x00U</span>))  <span class="tok-com">/* Control Reg 1 */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">SPI_SR</span>   (<span class="tok-op">*</span>(<span class="tok-kw">volatile</span> <span class="tok-type">uint32_t</span> <span class="tok-op">*</span>)(<span class="tok-reg">SPI_BASE</span> <span class="tok-op">+</span> <span class="tok-num">0x08U</span>))  <span class="tok-com">/* Status Reg    */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">SPI_DR</span>   (<span class="tok-op">*</span>(<span class="tok-kw">volatile</span> <span class="tok-type">uint32_t</span> <span class="tok-op">*</span>)(<span class="tok-reg">SPI_BASE</span> <span class="tok-op">+</span> <span class="tok-num">0x0CU</span>))  <span class="tok-com">/* Data Reg      */</span>
+
+<span class="tok-com">/* CR1 bit positions — standard across most Cortex-M SPI peripherals */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">SPI_CR1_CPHA</span>    (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">0</span>)   <span class="tok-com">/* 0=sample 1st edge, 1=sample 2nd edge */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">SPI_CR1_CPOL</span>    (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">1</span>)   <span class="tok-com">/* 0=SCK idle low,   1=SCK idle high    */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">SPI_CR1_MSTR</span>    (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">2</span>)   <span class="tok-com">/* 1=master (we drive SCK)              */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">SPI_CR1_BR_DIV8</span> (<span class="tok-num">2U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">3</span>)   <span class="tok-com">/* BR[2:0]=010 → fPCLK / 8             */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">SPI_CR1_SPE</span>     (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">6</span>)   <span class="tok-com">/* SPI enable — set LAST after config   */</span>
+
+<span class="tok-com">/* SR status flags — polled to know when it is safe to read/write DR */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">SPI_SR_RXNE</span>     (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">0</span>)   <span class="tok-com">/* RX buffer not empty — byte ready     */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">SPI_SR_TXE</span>      (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">1</span>)   <span class="tok-com">/* TX buffer empty — safe to load next  */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">SPI_SR_BSY</span>      (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">7</span>)   <span class="tok-com">/* Busy — shift reg still clocking out  */</span></code></pre>
+</div>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">spi_driver.c — init, core transceive, and usage pattern</span></div>
+<pre><code><span class="tok-pp">#include</span> <span class="tok-str">"spi_driver.h"</span>
+<span class="tok-pp">#include</span> <span class="tok-str">&lt;stdint.h&gt;</span>
+
+<span class="tok-com">/* SPI_Init — disable, configure CR1, re-enable.
+ * Call AFTER enabling the peripheral clock and GPIO alternate functions. */</span>
+<span class="tok-kw">void</span> <span class="tok-fn">SPI_Init</span>(<span class="tok-kw">void</span>)
 {
-    <span class="tok-fn">HAL_GPIO_WritePin</span>(<span class="tok-reg">SPI_CS_GPIO_Port</span>, <span class="tok-reg">SPI_CS_Pin</span>, <span class="tok-reg">GPIO_PIN_RESET</span>);
-    <span class="tok-com">/* tCSS: ≥ 20 ns for most sensors — 1 NOP @ 168 MHz ≈ 6 ns,
-     * so 4 NOPs give comfortable margin */</span>
-    <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>();
+    <span class="tok-reg">SPI_CR1</span>  <span class="tok-op">=</span> <span class="tok-num">0</span>;                         <span class="tok-com">/* clear SPE + all config first */</span>
+    <span class="tok-reg">SPI_CR1</span>  <span class="tok-op">=</span> <span class="tok-reg">SPI_CR1_MSTR</span>               <span class="tok-com">/* master — we generate SCK */</span>
+             <span class="tok-op">|</span> <span class="tok-reg">SPI_CR1_BR_DIV8</span>;           <span class="tok-com">/* baud = fPCLK / 8          */</span>
+    <span class="tok-com">/* CPOL=0, CPHA=0 left at reset → Mode 0; change bits for other modes */</span>
+    <span class="tok-reg">SPI_CR1</span> <span class="tok-op">|=</span> <span class="tok-reg">SPI_CR1_SPE</span>;               <span class="tok-com">/* enable — pins go active   */</span>
 }
 
-<span class="tok-kw">static</span> <span class="tok-kw">inline</span> <span class="tok-kw">void</span> <span class="tok-fn">cs_deassert</span>(<span class="tok-kw">void</span>)
+<span class="tok-com">/* SPI_Transceive — the fundamental SPI operation.
+ * Every SPI transfer is full-duplex: while we shift txData out on MOSI,
+ * the slave simultaneously shifts its byte in on MISO.
+ * 8 clock edges later, both sides have swapped a complete byte.         */</span>
+<span class="tok-type">uint8_t</span> <span class="tok-fn">SPI_Transceive</span>(<span class="tok-type">uint8_t</span> tx)
 {
-    <span class="tok-com">/* tCSH: ≥ 50 ns before next transfer on many devices */</span>
-    <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>(); <span class="tok-fn">__NOP</span>();
-    <span class="tok-fn">HAL_GPIO_WritePin</span>(<span class="tok-reg">SPI_CS_GPIO_Port</span>, <span class="tok-reg">SPI_CS_Pin</span>, <span class="tok-reg">GPIO_PIN_SET</span>);
+    <span class="tok-kw">while</span> (<span class="tok-op">!</span>(<span class="tok-reg">SPI_SR</span> <span class="tok-op">&amp;</span> <span class="tok-reg">SPI_SR_TXE</span>));      <span class="tok-com">/* wait: TX buffer empty     */</span>
+    <span class="tok-reg">SPI_DR</span> <span class="tok-op">=</span> (<span class="tok-type">uint32_t</span>)tx;                 <span class="tok-com">/* load → hw starts clocking */</span>
+    <span class="tok-kw">while</span> (<span class="tok-op">!</span>(<span class="tok-reg">SPI_SR</span> <span class="tok-op">&amp;</span> <span class="tok-reg">SPI_SR_RXNE</span>));     <span class="tok-com">/* wait: RX byte arrived     */</span>
+    <span class="tok-kw">return</span> (<span class="tok-type">uint8_t</span>)<span class="tok-reg">SPI_DR</span>;               <span class="tok-com">/* read clears RXNE flag     */</span>
 }
 
-<span class="tok-type">HAL_StatusTypeDef</span> <span class="tok-fn">spi_write_reg</span>(<span class="tok-type">uint8_t</span> reg, <span class="tok-type">uint8_t</span> val)
+<span class="tok-com">/* Helper: Transmit-only (discard received byte) */</span>
+<span class="tok-kw">void</span> <span class="tok-fn">SPI_Transmit</span>(<span class="tok-type">uint8_t</span> data) { (<span class="tok-kw">void</span>)<span class="tok-fn">SPI_Transceive</span>(data); }
+
+<span class="tok-com">/* Helper: Receive-only — send 0xFF dummy to generate the 8 clocks */</span>
+<span class="tok-type">uint8_t</span> <span class="tok-fn">SPI_Receive</span>(<span class="tok-kw">void</span>) { <span class="tok-kw">return</span> <span class="tok-fn">SPI_Transceive</span>(<span class="tok-num">0xFF</span>); }
+
+<span class="tok-com">/* --- Usage pattern (cs_assert / cs_deassert are your GPIO writes) ---- */</span>
+<span class="tok-kw">void</span> <span class="tok-fn">spi_write_reg</span>(<span class="tok-type">uint8_t</span> reg, <span class="tok-type">uint8_t</span> val)
 {
-    <span class="tok-type">uint8_t</span> buf[<span class="tok-num">2</span>] = { reg &amp; <span class="tok-num">0x7F</span>, val }; <span class="tok-com">/* clear MSB = write command */</span>
     <span class="tok-fn">cs_assert</span>();
-    <span class="tok-type">HAL_StatusTypeDef</span> st = <span class="tok-fn">HAL_SPI_Transmit</span>(&amp;<span class="tok-reg">hspi1</span>, buf, <span class="tok-kw">sizeof</span>(buf), <span class="tok-num">10</span>);
+    <span class="tok-fn">SPI_Transmit</span>(reg <span class="tok-op">&amp;</span> <span class="tok-num">0x7F</span>);             <span class="tok-com">/* MSB=0 → write command     */</span>
+    <span class="tok-fn">SPI_Transmit</span>(val);
+    <span class="tok-kw">while</span> (<span class="tok-reg">SPI_SR</span> <span class="tok-op">&amp;</span> <span class="tok-reg">SPI_SR_BSY</span>);         <span class="tok-com">/* last bit still shifting   */</span>
     <span class="tok-fn">cs_deassert</span>();
-    <span class="tok-kw">return</span> st;
 }
 
-<span class="tok-type">HAL_StatusTypeDef</span> <span class="tok-fn">spi_read_reg</span>(<span class="tok-type">uint8_t</span> reg, <span class="tok-type">uint8_t</span> *val)
+<span class="tok-type">uint8_t</span> <span class="tok-fn">spi_read_reg</span>(<span class="tok-type">uint8_t</span> reg)
 {
-    <span class="tok-type">uint8_t</span> tx = reg | <span class="tok-num">0x80</span>; <span class="tok-com">/* set MSB = read command */</span>
-    <span class="tok-type">uint8_t</span> rx = <span class="tok-num">0</span>;
     <span class="tok-fn">cs_assert</span>();
-    <span class="tok-type">HAL_StatusTypeDef</span> st = <span class="tok-fn">HAL_SPI_TransmitReceive</span>(&amp;<span class="tok-reg">hspi1</span>, &amp;tx, &amp;rx, <span class="tok-num">1</span>, <span class="tok-num">10</span>);
+    <span class="tok-fn">SPI_Transmit</span>(reg <span class="tok-op">|</span> <span class="tok-num">0x80</span>);             <span class="tok-com">/* MSB=1 → read command      */</span>
+    <span class="tok-type">uint8_t</span> val <span class="tok-op">=</span> <span class="tok-fn">SPI_Receive</span>();           <span class="tok-com">/* dummy TX, real RX         */</span>
+    <span class="tok-kw">while</span> (<span class="tok-reg">SPI_SR</span> <span class="tok-op">&amp;</span> <span class="tok-reg">SPI_SR_BSY</span>);
     <span class="tok-fn">cs_deassert</span>();
-    *val = rx;
-    <span class="tok-kw">return</span> st;
+    <span class="tok-kw">return</span> val;
 }</code></pre>
 </div>
 
@@ -638,21 +678,21 @@ body::after {
 <p>To program N daisy-chained devices, the master transmits N × <em>word_size</em> bits with CS̄ held low the entire time. Each clock shifts data one step further down the chain. When CS̄ rises, all devices latch the word that reached their input register. The first device in the chain receives the last byte transmitted; the last device receives the first byte. This reversal must be accounted for when assembling the transmit buffer.</p>
 
 <div class="codeblock">
-<div class="codeblock-head"><span class="lang">C</span><span class="file">daisy_chain.c — write N 74HC595 shift registers</span></div>
+<div class="codeblock-head"><span class="lang">C</span><span class="file">daisy_chain.c — write N 74HC595 shift registers (generic bare-metal)</span></div>
 <pre><code><span class="tok-pp">#define</span> <span class="tok-reg">NUM_DEVICES</span>  <span class="tok-num">3</span>
 
-<span class="tok-com">/* values[0] goes to the LAST device (first to latch when CS rises),
- * values[N-1] goes to the FIRST device in the chain.            */</span>
+<span class="tok-com">/* values[0] → LAST device in chain (latches when CS rises first),
+ * values[N-1] → FIRST device. Transmit in reverse so each word
+ * ripples to its correct destination before CS de-asserts.      */</span>
 <span class="tok-kw">void</span> <span class="tok-fn">daisy_write</span>(<span class="tok-kw">const</span> <span class="tok-type">uint8_t</span> values[<span class="tok-reg">NUM_DEVICES</span>])
 {
-    <span class="tok-type">uint8_t</span> buf[<span class="tok-reg">NUM_DEVICES</span>];
-    <span class="tok-com">/* Reverse: last element of values → first byte on MOSI */</span>
-    <span class="tok-kw">for</span> (<span class="tok-type">int</span> i = <span class="tok-num">0</span>; i &lt; <span class="tok-reg">NUM_DEVICES</span>; i++)
-        buf[i] = values[<span class="tok-reg">NUM_DEVICES</span> - <span class="tok-num">1</span> - i];
+    <span class="tok-fn">cs_assert</span>();                              <span class="tok-com">/* select all slaves together */</span>
 
-    <span class="tok-fn">cs_assert</span>();
-    <span class="tok-fn">HAL_SPI_Transmit</span>(&amp;<span class="tok-reg">hspi1</span>, buf, <span class="tok-reg">NUM_DEVICES</span>, <span class="tok-num">10</span>);
-    <span class="tok-fn">cs_deassert</span>();   <span class="tok-com">/* rising edge latches data into all output registers */</span>
+    <span class="tok-kw">for</span> (<span class="tok-type">int</span> i <span class="tok-op">=</span> <span class="tok-reg">NUM_DEVICES</span> <span class="tok-op">-</span> <span class="tok-num">1</span>; i <span class="tok-op">&gt;=</span> <span class="tok-num">0</span>; i<span class="tok-op">--</span>)
+        <span class="tok-fn">SPI_Transmit</span>(values[i]);              <span class="tok-com">/* shift one word down chain  */</span>
+
+    <span class="tok-kw">while</span> (<span class="tok-reg">SPI_SR</span> <span class="tok-op">&amp;</span> <span class="tok-reg">SPI_SR_BSY</span>);            <span class="tok-com">/* last bit still on the wire */</span>
+    <span class="tok-fn">cs_deassert</span>();  <span class="tok-com">/* rising edge latches data into all output registers  */</span>
 }</code></pre>
 </div>
 
@@ -666,35 +706,45 @@ body::after {
 <p>Blocking SPI transfers (<code>HAL_SPI_Transmit</code> with a timeout) burn CPU cycles waiting for each byte to shift out. At 10 MHz and 8-bit frames, one byte takes 800 ns — time the CPU could be doing something else. DMA fixes this: configure the DMA controller to feed bytes to the SPI shift register autonomously, fire the transfer, and let the CPU continue until a DMA-complete interrupt signals that the buffer is done.</p>
 
 <div class="codeblock">
-<div class="codeblock-head"><span class="lang">C</span><span class="file">spi_dma.c — non-blocking DMA transmit (STM32 HAL)</span></div>
-<pre><code><span class="tok-kw">volatile</span> <span class="tok-type">uint8_t</span> spi_busy = <span class="tok-num">0</span>;
+<div class="codeblock-head"><span class="lang">C</span><span class="file">spi_dma.c — non-blocking DMA transmit (generic bare-metal pattern)</span></div>
+<pre><code><span class="tok-com">/* DMA register names are MCU-specific — replace DMA_* macros with
+ * your peripheral's register writes. The logic structure is universal. */</span>
 
-<span class="tok-com">/* Called from HAL_SPI_TxCpltCallback */</span>
-<span class="tok-kw">void</span> <span class="tok-fn">HAL_SPI_TxCpltCallback</span>(<span class="tok-type">SPI_HandleTypeDef</span> *hspi)
+<span class="tok-kw">volatile</span> <span class="tok-type">uint8_t</span> spi_busy <span class="tok-op">=</span> <span class="tok-num">0</span>;
+
+<span class="tok-com">/* DMA transfer-complete ISR — hardware calls this when the last byte
+ * has been loaded into the SPI shift register. We then wait for BSY=0
+ * (shift register drained) before releasing CS.                       */</span>
+<span class="tok-kw">void</span> <span class="tok-fn">SPI_DMA_IRQHandler</span>(<span class="tok-kw">void</span>)
 {
-    <span class="tok-kw">if</span> (hspi->Instance == <span class="tok-reg">SPI1</span>) {
-        <span class="tok-fn">cs_deassert</span>();
-        spi_busy = <span class="tok-num">0</span>;
-    }
+    <span class="tok-fn">DMA_CLEAR_TC_FLAG</span>();                   <span class="tok-com">/* ack interrupt (MCU-specific) */</span>
+    <span class="tok-kw">while</span> (<span class="tok-reg">SPI_SR</span> <span class="tok-op">&amp;</span> <span class="tok-reg">SPI_SR_BSY</span>);          <span class="tok-com">/* drain shift register        */</span>
+    <span class="tok-fn">cs_deassert</span>();
+    spi_busy <span class="tok-op">=</span> <span class="tok-num">0</span>;
 }
 
-<span class="tok-com">/* Non-blocking transmit — caller must wait for spi_busy == 0 */</span>
-<span class="tok-type">HAL_StatusTypeDef</span> <span class="tok-fn">spi_transmit_dma</span>(<span class="tok-type">uint8_t</span> *buf, <span class="tok-type">uint16_t</span> len)
+<span class="tok-com">/* Non-blocking transmit — configure DMA, fire it, return immediately.
+ * The ISR handles CS de-assertion when done.                          */</span>
+<span class="tok-kw">void</span> <span class="tok-fn">spi_transmit_dma</span>(<span class="tok-type">uint8_t</span> <span class="tok-op">*</span>buf, <span class="tok-type">uint16_t</span> len)
 {
-    <span class="tok-kw">if</span> (spi_busy) <span class="tok-kw">return</span> <span class="tok-reg">HAL_BUSY</span>;
-    spi_busy = <span class="tok-num">1</span>;
+    <span class="tok-kw">if</span> (spi_busy) <span class="tok-kw">return</span>;
+    spi_busy <span class="tok-op">=</span> <span class="tok-num">1</span>;
+
     <span class="tok-fn">cs_assert</span>();
-    <span class="tok-com">/* DMA feeds bytes into SPI->DR autonomously */</span>
-    <span class="tok-kw">return</span> <span class="tok-fn">HAL_SPI_Transmit_DMA</span>(&amp;<span class="tok-reg">hspi1</span>, buf, len);
+
+    <span class="tok-com">/* Point DMA source at buf, destination at SPI_DR, set length */</span>
+    <span class="tok-fn">DMA_Configure</span>(<span class="tok-op">&amp;</span><span class="tok-reg">SPI_DR</span>, buf, len);      <span class="tok-com">/* MCU-specific registers      */</span>
+    <span class="tok-reg">SPI_CR2</span> <span class="tok-op">|=</span> <span class="tok-reg">SPI_CR2_TXDMAEN</span>;           <span class="tok-com">/* SPI requests byte from DMA  */</span>
+    <span class="tok-fn">DMA_Enable</span>();                           <span class="tok-com">/* start transfer               */</span>
+    <span class="tok-com">/* CPU returns — ISR fires on TC interrupt when transfer is complete */</span>
 }
 
-<span class="tok-com">/* Usage */</span>
+<span class="tok-com">/* Usage: refresh an SPI display without blocking the CPU */</span>
 <span class="tok-kw">void</span> <span class="tok-fn">display_refresh</span>(<span class="tok-kw">void</span>)
 {
-    <span class="tok-com">/* frame_buf is SRAM — must remain valid until spi_busy == 0 */</span>
-    <span class="tok-kw">while</span> (spi_busy) {}          <span class="tok-com">/* wait for prior frame */</span>
+    <span class="tok-kw">while</span> (spi_busy) {}                    <span class="tok-com">/* wait for prior frame to finish */</span>
     <span class="tok-fn">spi_transmit_dma</span>(frame_buf, <span class="tok-kw">sizeof</span>(frame_buf));
-    <span class="tok-com">/* CPU is free to do other work now */</span>
+    <span class="tok-com">/* CPU is free — DMA and SPI hardware run autonomously              */</span>
 }</code></pre>
 </div>
 
@@ -767,33 +817,46 @@ body::after {
 <p>QSPI and OSPI peripherals on modern MCUs support a <em>memory-mapped</em> mode, also called Execute-in-Place (XIP). The peripheral sits at a fixed address range in the CPU's memory map (e.g., <code>0x90000000</code> on STM32H7). When the CPU fetches an instruction or reads data from that range, the QSPI peripheral automatically translates the access into a fast-read SPI transaction, caches the result in a small internal FIFO, and returns the data with minimal latency. From the CPU's perspective, external flash looks like ordinary SRAM. The penalty is one burst miss latency; subsequent accesses into the same cache line are served at full bus speed.</p>
 
 <div class="codeblock">
-<div class="codeblock-head"><span class="lang">C</span><span class="file">qspi_init.c — STM32H7 QUADSPI in memory-mapped mode</span></div>
-<pre><code><span class="tok-pp">#include</span> <span class="tok-str">"stm32h7xx_hal.h"</span>
+<div class="codeblock-head"><span class="lang">C</span><span class="file">qspi_init.c — QSPI memory-mapped mode (generic register-level pattern)</span></div>
+<pre><code><span class="tok-com">/* QSPI peripherals vary across MCU families — verify base address,
+ * register offsets, and bit field positions in your reference manual.
+ * This shows the register-level logic; the field names are generic.  */</span>
 
-<span class="tok-kw">static</span> <span class="tok-type">QSPI_HandleTypeDef</span> hqspi;
+<span class="tok-pp">#define</span> <span class="tok-reg">QSPI_BASE</span>  <span class="tok-num">0xA0001000UL</span>              <span class="tok-com">/* check your RM              */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">QSPI_CR</span>    (<span class="tok-op">*</span>(<span class="tok-kw">volatile</span> <span class="tok-type">uint32_t</span> <span class="tok-op">*</span>)(<span class="tok-reg">QSPI_BASE</span> <span class="tok-op">+</span> <span class="tok-num">0x00</span>))  <span class="tok-com">/* Control     */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">QSPI_DCR</span>   (<span class="tok-op">*</span>(<span class="tok-kw">volatile</span> <span class="tok-type">uint32_t</span> <span class="tok-op">*</span>)(<span class="tok-reg">QSPI_BASE</span> <span class="tok-op">+</span> <span class="tok-num">0x04</span>))  <span class="tok-com">/* Device cfg  */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">QSPI_CCR</span>   (<span class="tok-op">*</span>(<span class="tok-kw">volatile</span> <span class="tok-type">uint32_t</span> <span class="tok-op">*</span>)(<span class="tok-reg">QSPI_BASE</span> <span class="tok-op">+</span> <span class="tok-num">0x14</span>))  <span class="tok-com">/* Comm config */</span>
 
-<span class="tok-type">HAL_StatusTypeDef</span> <span class="tok-fn">qspi_memory_map</span>(<span class="tok-kw">void</span>)
+<span class="tok-com">/* CCR field masks — typical layout, verify against your RM */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">CCR_FMODE_MEMMAP</span>  (<span class="tok-num">3U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">26</span>)  <span class="tok-com">/* memory-mapped mode         */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">CCR_DMODE_4LINES</span>  (<span class="tok-num">3U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">24</span>)  <span class="tok-com">/* data phase: 4 IO lines     */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">CCR_DCYC</span>(n)       ((n) <span class="tok-op">&lt;&lt;</span> <span class="tok-num">18</span>) <span class="tok-com">/* dummy cycles before data   */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">CCR_ADMODE_4LINES</span> (<span class="tok-num">3U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">10</span>)  <span class="tok-com">/* address phase: 4 IO lines  */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">CCR_IMODE_1LINE</span>   (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span>  <span class="tok-num">8</span>)  <span class="tok-com">/* instruction phase: 1 line  */</span>
+
+<span class="tok-kw">void</span> <span class="tok-fn">qspi_memory_map</span>(<span class="tok-kw">void</span>)
 {
-    <span class="tok-type">QSPI_CommandTypeDef</span>      cmd  = {<span class="tok-num">0</span>};
-    <span class="tok-type">QSPI_MemoryMappedTypeDef</span> mmap = {<span class="tok-num">0</span>};
+    <span class="tok-com">/* 1. Enable QSPI peripheral clock (RCC — MCU-specific) */</span>
 
-    <span class="tok-com">/* W25Q128 quad fast-read: opcode 0xEB, 4-byte address,
-     * 4-line address + data, 6 dummy cycles                */</span>
-    cmd.InstructionMode   = <span class="tok-reg">QSPI_INSTRUCTION_1_LINE</span>;
-    cmd.Instruction       = <span class="tok-num">0xEB</span>;          <span class="tok-com">/* QPI fast read */</span>
-    cmd.AddressMode       = <span class="tok-reg">QSPI_ADDRESS_4_LINES</span>;
-    cmd.AddressSize       = <span class="tok-reg">QSPI_ADDRESS_24_BITS</span>;
-    cmd.AlternateByteMode = <span class="tok-reg">QSPI_ALTERNATE_BYTES_NONE</span>;
-    cmd.DataMode          = <span class="tok-reg">QSPI_DATA_4_LINES</span>;
-    cmd.DummyCycles       = <span class="tok-num">6</span>;
-    cmd.DdrMode           = <span class="tok-reg">QSPI_DDR_MODE_DISABLE</span>;
-    cmd.SIOOMode          = <span class="tok-reg">QSPI_SIOO_INST_EVERY_CMD</span>;
+    <span class="tok-com">/* 2. Flash geometry: 2^(FSIZE+1) bytes, CS high time in CSHT clocks */</span>
+    <span class="tok-reg">QSPI_DCR</span> <span class="tok-op">=</span> (<span class="tok-num">22U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">16</span>)               <span class="tok-com">/* FSIZE: 2^23 = 8 MB        */</span>
+             <span class="tok-op">|</span> ( <span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span>  <span class="tok-num">8</span>);               <span class="tok-com">/* CSHT:  2 cycles minimum   */</span>
 
-    mmap.TimeOutActivation = <span class="tok-reg">QSPI_TIMEOUT_COUNTER_DISABLE</span>;
+    <span class="tok-com">/* 3. Prescaler: divides AHB clock to reach target QSPI frequency */</span>
+    <span class="tok-reg">QSPI_CR</span>  <span class="tok-op">=</span> (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">24</span>)               <span class="tok-com">/* PRESCALER: AHB / 2        */</span>
+             <span class="tok-op">|</span> (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span>  <span class="tok-num">0</span>);               <span class="tok-com">/* EN: enable peripheral     */</span>
 
-    <span class="tok-kw">return</span> <span class="tok-fn">HAL_QSPI_MemoryMapped</span>(&amp;hqspi, &amp;cmd, &amp;mmap);
-    <span class="tok-com">/* After this call, 0x90000000 aliases the flash array.
-     * Linker can place code or read-only data at 0x90xxxxxx. */</span>
+    <span class="tok-com">/* 4. Command config: opcode 0xEB = quad fast-read (W25Qxxx)
+     *    Instruction on 1 line, address + data on 4 lines, 6 dummy cycles */</span>
+    <span class="tok-reg">QSPI_CCR</span> <span class="tok-op">=</span> <span class="tok-reg">CCR_FMODE_MEMMAP</span>
+             <span class="tok-op">|</span> <span class="tok-reg">CCR_DMODE_4LINES</span>
+             <span class="tok-op">|</span> <span class="tok-reg">CCR_DCYC</span>(<span class="tok-num">6</span>)
+             <span class="tok-op">|</span> <span class="tok-reg">CCR_ADMODE_4LINES</span>
+             <span class="tok-op">|</span> <span class="tok-reg">CCR_IMODE_1LINE</span>
+             <span class="tok-op">|</span> <span class="tok-num">0xEB</span>;                    <span class="tok-com">/* quad fast-read opcode     */</span>
+
+    <span class="tok-com">/* Flash is now accessible at the QSPI address window (e.g. 0x90000000).
+     * The peripheral handles the protocol for every CPU fetch automatically. */</span>
 }</code></pre>
 </div>
 

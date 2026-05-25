@@ -1,3 +1,5 @@
 [2026-05-25 02:49:30] Trigger detected. Committing: Add: watch-and-push combined watcher + restart-watcher.bat for Embedded Systems
 [2026-05-25 02:49:33] SUCCESS - pushed to GitHub
 [2026-05-25 09:37:38] Trigger detected. Committing: Add: generic bare-metal SPI driver (spi_driver.h + spi_driver.c)
+[2026-05-25 09:37:40] SUCCESS - pushed to GitHub
+[2026-05-25 10:36:11] Trigger detected. Committing: Update: HB6-T02 SPI — replace STM32/HAL code blocks with generic bare-metal implementation
