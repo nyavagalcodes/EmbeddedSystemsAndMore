@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HB6 · Topic 01 · UART — Baud Rate, Framing &amp; Interrupts — Embedded Systems Mastery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,200;0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,200;1,9..144,300;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #14110d;
+  --bg-2: #1a1612;
+  --bg-3: #221d17;
+  --bg-card: #18140f;
+  --fg: #e8dfc9;
+  --fg-2: #b8ad94;
+  --fg-3: #7d735f;
+  --fg-4: #4e4737;
+  --gold: #c9a961;
+  --gold-bright: #d9bb74;
+  --gold-deep: #9e8649;
+  --gold-soft: rgba(201, 169, 97, 0.12);
+  --line: rgba(232, 223, 201, 0.07);
+  --line-strong: rgba(232, 223, 201, 0.14);
+  --serif: "Fraunces", "Cormorant Garamond", Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "kern", "liga", "onum";
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.45 0 0 0 0 0.35 0 0 0 0.06 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  opacity: 0.6;
+  z-index: 0;
+  mix-blend-mode: overlay;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(201, 169, 97, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 40% at 50% 100%, rgba(20, 17, 13, 0.5) 0%, transparent 50%);
+  z-index: 0;
+}
+
+.page { position: relative; z-index: 1; }
+::selection { background: var(--gold); color: var(--bg); }
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 20px 32px;
+  background: rgba(20, 17, 13, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+.topbar .brand { color: var(--gold); font-weight: 500; text-decoration: none; letter-spacing: 0.24em; }
+.topbar .nav-right { display: flex; gap: 22px; align-items: center; color: var(--fg-3); }
+.topbar .nav-right a { color: var(--fg-3); text-decoration: none; transition: color 0.2s ease; }
+.topbar .nav-right a:hover { color: var(--gold); }
+.topbar .sep { color: var(--fg-4); }
+
+.topic-page-header {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 70px 40px 50px;
+  border-bottom: 1px solid var(--line);
+}
+
+.topic-crumbs {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg-3);
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+}
+.topic-crumbs a { color: var(--fg-3); text-decoration: none; transition: color 0.2s; }
+.topic-crumbs a:hover { color: var(--gold); }
+.topic-crumbs .dot { color: var(--fg-4); }
+.topic-crumbs .current { color: var(--gold); }
+
+.topic-page-meta {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--fg-3);
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.topic-page-meta .topic-num-badge { color: var(--gold); font-weight: 600; }
+
+.topic-page-header h1 {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(36px, 5.5vw, 64px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin: 0 0 24px;
+  color: var(--fg);
+}
+.topic-page-header h1 .em { font-style: italic; color: var(--gold); font-weight: 300; }
+.topic-page-header .lede {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(17px, 2vw, 21px);
+  line-height: 1.55;
+  color: var(--fg-2);
+  max-width: 680px;
+  margin: 0;
+}
+
+.topic-page { max-width: 820px; margin: 0 auto; padding: 0 40px 80px; }
+.prose { padding-top: 56px; }
+
+.prose h2 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(26px, 3.5vw, 36px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 72px 0 24px;
+  color: var(--fg);
+  position: relative;
+}
+.prose h2:first-child { margin-top: 0; }
+.prose h2 .em { font-style: italic; color: var(--gold); font-weight: 300; }
+.prose h2::before {
+  content: "";
+  display: block;
+  width: 32px;
+  height: 1px;
+  background: var(--gold);
+  margin-bottom: 20px;
+  opacity: 0.6;
+}
+
+.prose h3 {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 22px;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  margin: 48px 0 18px;
+  color: var(--fg);
+}
+
+.prose h4 {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--gold);
+  margin: 36px 0 14px;
+  font-weight: 600;
+}
+
+.prose p {
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--fg);
+  margin: 0 0 22px;
+}
+.prose p em, .prose li em { font-style: italic; color: var(--gold); }
+.prose strong { font-weight: 600; color: var(--fg); }
+
+.prose ul, .prose ol { margin: 0 0 28px; padding-left: 24px; }
+.prose li { font-family: var(--serif); font-size: 17px; line-height: 1.65; color: var(--fg); margin-bottom: 10px; }
+.prose li::marker { color: var(--gold); }
+
+.prose code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--bg-3);
+  color: var(--gold-bright);
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--line-strong);
+  letter-spacing: 0;
+}
+
+.prose > p:first-of-type::first-letter {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-style: italic;
+  font-size: 4.5em;
+  float: left;
+  line-height: 0.85;
+  margin: 0.05em 0.12em 0 0;
+  color: var(--gold);
+}
+
+.codeblock {
+  background: var(--bg-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  margin: 28px 0 32px;
+  overflow: hidden;
+}
+.codeblock-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-2);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--fg-3);
+}
+.codeblock-head .lang { color: var(--gold); font-weight: 600; }
+.codeblock-head .file { color: var(--fg-3); font-style: italic; text-transform: none; letter-spacing: 0.04em; font-size: 11px; }
+.codeblock pre { margin: 0; padding: 20px 22px; font-family: var(--mono); font-size: 13.5px; line-height: 1.65; overflow-x: auto; color: var(--fg); white-space: pre; }
+.codeblock pre code { background: transparent; border: none; padding: 0; color: inherit; font-size: inherit; }
+
+.tok-kw    { color: #d99a4e; font-weight: 500; }
+.tok-fn    { color: #c9a961; }
+.tok-str   { color: #a8c98a; }
+.tok-num   { color: #d4a8a8; }
+.tok-type  { color: #8ab5c9; }
+.tok-com   { color: #6b6253; font-style: italic; }
+.tok-pp    { color: #b88aa8; }
+.tok-reg   { color: #d4a874; font-weight: 500; }
+.tok-op    { color: #b8ad94; }
+
+.diagram {
+  background: var(--bg-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 24px;
+  margin: 28px 0 32px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-x: auto;
+  color: var(--fg);
+  white-space: pre;
+}
+.diagram-caption {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--fg-3);
+  text-align: center;
+  margin: -16px 0 32px;
+}
+
+.callout {
+  border-left: 3px solid var(--gold);
+  background: var(--gold-soft);
+  padding: 20px 24px;
+  margin: 28px 0 32px;
+  border-radius: 0 4px 4px 0;
+}
+.callout-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: var(--gold);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.callout p { margin-bottom: 10px; color: var(--fg); font-size: 16px; }
+.callout p:last-child { margin-bottom: 0; }
+.callout.warn { border-left-color: #c97a5a; background: rgba(201, 122, 90, 0.08); }
+.callout.warn .callout-label { color: #d99a7a; }
+.callout.key { border-left-color: var(--gold-bright); background: rgba(217, 187, 116, 0.06); }
+
+.table-wrap { margin: 28px 0 32px; overflow-x: auto; }
+.prose-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
+.prose-table th, .prose-table td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--line); color: var(--fg); }
+.prose-table th { background: var(--bg-3); color: var(--gold); font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.18em; border-bottom: 1px solid var(--line-strong); }
+.prose-table tr:hover td { background: var(--gold-soft); }
+
+.qa-section { margin-top: 64px; padding-top: 48px; border-top: 1px solid var(--line); }
+.qa-section-head { margin-bottom: 32px; }
+.qa-section-head .label { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.28em; color: var(--gold); margin-bottom: 12px; }
+.qa-section-head .label::before { content: "§ "; color: var(--fg-3); }
+.qa-section-head h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(28px, 4vw, 38px); line-height: 1.1; letter-spacing: -0.025em; margin: 0; color: var(--fg); }
+.qa-section-head h2 .em { font-style: italic; color: var(--gold); font-weight: 300; }
+.qa-section-head h2::before { display: none; }
+
+.qa { border-bottom: 1px solid var(--line); padding: 24px 0; }
+.qa:last-child { border-bottom: none; }
+.qa-q { display: flex; gap: 18px; align-items: baseline; margin-bottom: 14px; }
+.qa-num { font-family: var(--serif); font-style: italic; font-size: 22px; font-weight: 300; color: var(--gold); line-height: 1; flex-shrink: 0; }
+.qa-question { font-family: var(--serif); font-weight: 500; font-size: 18px; line-height: 1.4; color: var(--fg); letter-spacing: -0.01em; }
+.qa-answer { margin-left: 40px; font-family: var(--serif); font-size: 16px; line-height: 1.65; color: var(--fg-2); }
+.qa-answer p { margin: 0 0 14px; color: var(--fg-2); }
+.qa-answer p:last-child { margin-bottom: 0; }
+.qa-answer code { font-family: var(--mono); font-size: 0.88em; background: var(--bg-3); color: var(--gold-bright); padding: 2px 7px; border-radius: 3px; }
+.qa-answer strong { color: var(--fg); font-weight: 600; }
+
+.topic-nav {
+  max-width: 820px;
+  margin: 60px auto 0;
+  padding: 32px 40px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.topic-nav a, .topic-nav .placeholder {
+  text-decoration: none;
+  color: inherit;
+  padding: 24px 22px;
+  border: 1px solid var(--line);
+  display: block;
+  transition: all 0.25s ease;
+}
+.topic-nav a:first-child { border-right: none; }
+.topic-nav a:hover { background: var(--gold-soft); border-color: var(--gold-deep); z-index: 2; position: relative; }
+.topic-nav .nav-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--fg-3);
+  margin-bottom: 10px;
+  display: block;
+}
+.topic-nav .nav-prev .nav-label::before { content: "← "; }
+.topic-nav .nav-next { text-align: right; }
+.topic-nav .nav-next .nav-label::after { content: " →"; }
+.topic-nav .nav-title { font-family: var(--serif); font-size: 18px; font-weight: 400; line-height: 1.3; letter-spacing: -0.01em; color: var(--fg); }
+.topic-nav a:hover .nav-title { color: var(--gold); }
+.topic-nav a:hover .nav-label { color: var(--gold); }
+.topic-nav .placeholder { opacity: 0.3; pointer-events: none; }
+.topic-nav .placeholder .nav-title { color: var(--fg-4); font-style: italic; font-weight: 300; }
+
+.footer {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 56px 40px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 24px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--fg-3);
+}
+.footer-mark { font-family: var(--serif); font-style: italic; font-size: 22px; font-weight: 300; color: var(--gold); text-transform: none; letter-spacing: 0; text-align: center; }
+.footer .right { text-align: right; }
+.footer a { color: var(--fg-3); text-decoration: none; transition: color 0.2s ease; }
+.footer a:hover { color: var(--gold); }
+
+@media (max-width: 720px) {
+  .topbar { padding: 16px 20px; font-size: 9px; letter-spacing: 0.18em; }
+  .topbar .nav-right { gap: 14px; }
+  .topbar .sep { display: none; }
+  .topic-page-header { padding: 48px 20px 36px; }
+  .topic-page { padding: 0 20px 60px; }
+  .topic-nav { padding: 24px 20px; grid-template-columns: 1fr; }
+  .topic-nav a:first-child { border-right: 1px solid var(--line); border-bottom: none; }
+  .topic-nav .nav-next { text-align: left; }
+  .footer { padding: 36px 20px; grid-template-columns: 1fr; text-align: center; gap: 14px; }
+  .footer .right { text-align: center; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="topbar">
+  <a href="index.html" class="brand">Embedded Systems Mastery</a>
+  <span class="nav-right">
+    <a href="HB6.html">HB6 Index</a>
+    <span class="sep">·</span>
+    <span>Topic 01</span>
+  </span>
+</div>
+
+<header class="topic-page-header">
+  <div class="topic-crumbs">
+    <a href="index.html">Series</a>
+    <span class="dot">·</span>
+    <a href="HB6.html">HB6</a>
+    <span class="dot">·</span>
+    <span class="current">Topic 01</span>
+  </div>
+  <div class="topic-page-meta">
+    <span class="topic-num-badge">Topic 01</span>
+    <span>·</span>
+    <span>HB6 · Serial &amp; Field-Bus Communication Protocols</span>
+  </div>
+  <h1>UART — Baud Rate, <span class="em">Framing</span> &amp; Interrupts</h1>
+  <p class="lede">The oldest asynchronous serial protocol in embedded systems — one wire, no clock, agreed-upon timing — and still the first bus every MCU brings up. From the BRR calculation to interrupt-driven ring buffers and error flag recovery.</p>
+</header>
+
+<article class="topic-page">
+  <div class="prose">
+
+<p>UART predates the microcontroller by over a decade. The protocol is almost absurdly simple: sender and receiver agree on a bit rate, and then the sender drives a line low to signal a start bit, clocks out the data bits, and releases the line high for the stop bit — no clock wire, no handshake, no addressing. Yet for point-to-point debug output, GPS receivers, Bluetooth modules, and host-MCU bridges, UART remains the default choice because it requires exactly two GPIO pins and a single register write to configure.</p>
+
+<p>The simplicity is deceptive. Getting UART right in an interrupt-driven system requires understanding exactly when each status flag is set and cleared, what the baud rate divider formula actually does to your clock, and how the hardware's three-sample majority-vote receiver detects noise without a reference clock. This topic covers all of it from the register level up.</p>
+
+<h2>The <span class="em">UART frame</span></h2>
+
+<p>Every UART transmission is a frame: a self-contained unit of bits with a defined structure. The line idles high. The start bit — always a single logic zero — tells the receiver "a frame is beginning, start your counter." The data bits follow LSB first in standard UART. An optional parity bit comes next. One or two stop bits — always logic high — close the frame and give the receiver time to process the byte before the next start bit.</p>
+
+<div class="diagram">  Standard UART frame — 8N1 (8 data bits, No parity, 1 stop bit)
+
+  Line
+  level:
+         Idle  Start  D0    D1    D2    D3    D4    D5    D6    D7   Stop  Idle
+  ‾‾‾‾‾‾‾‾‾╮    ╭────╮ ╭────╮           ╭────╮ ╭────╮           ╭──────────────
+            ╰────╯    ╰─╯    ╰───────────╯    ╰─╯    ╰───────────╯
+            ↑                                                     ↑
+          Start bit                                             Stop bit
+         (always 0)                                           (always 1)
+
+           ←─────────────── 1 bit-period = 1 / baud ──────────────→
+
+  Sending 0x55 (0101 0101) at 9600 baud:
+    bit-period = 1/9600 ≈ 104.2 µs
+    total frame = 10 bits × 104.2 µs = 1.04 ms per byte
+    max throughput = 9600 / 10 = 960 bytes/sec
+
+  Common configurations:
+    8N1  — 8 data bits, no parity, 1 stop  (universal default)
+    8E1  — 8 data bits, even parity, 1 stop
+    8O1  — 8 data bits, odd parity, 1 stop
+    8N2  — 8 data bits, no parity, 2 stops (slow/noisy links)
+    9N1  — 9 data bits (used for multi-drop address byte marking)</div>
+<p class="diagram-caption">The receiver samples each bit three times and takes a majority vote — a single glitch on one sample does not corrupt the result.</p>
+
+<div class="callout key">
+<div class="callout-label">Key Idea</div>
+<p>The receiver has no clock reference. It locks onto the falling edge of the start bit, then samples the centre of each expected bit period using its own internal clock running at 16× (or 8×) the baud rate. Every bit gets three samples; two-of-three wins. This is why UART tolerates small clock frequency errors — typically ±2–3% across the whole link — but fails catastrophically at ±5% or more, when the accumulated timing drift puts the sample point outside the data eye.</p>
+</div>
+
+<h2>Register map and <span class="em">bit definitions</span></h2>
+
+<p>UART peripherals across Cortex-M MCUs share a nearly identical register layout. The register names below match the common industry convention; verify offsets and bit positions in your MCU's reference manual before porting.</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">uart_driver.h — register map and bit definitions</span></div>
+<pre><code><span class="tok-com">/* Change UART_BASE to your MCU's USART peripheral address.
+ * STM32F1 USART1: 0x40013800  |  STM32F4 USART1: 0x40011000
+ * nRF52840 UARTE0: 0x40002000 |  RP2040  UART0:  0x40034000  */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_BASE</span>   <span class="tok-num">0x40011000UL</span>
+
+<span class="tok-com">/* Register map — volatile dereference of (base + offset) */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_SR</span>   (<span class="tok-op">*</span>(<span class="tok-kw">volatile</span> <span class="tok-type">uint32_t</span> <span class="tok-op">*</span>)(<span class="tok-reg">UART_BASE</span> <span class="tok-op">+</span> <span class="tok-num">0x00U</span>))  <span class="tok-com">/* Status Register      */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_DR</span>   (<span class="tok-op">*</span>(<span class="tok-kw">volatile</span> <span class="tok-type">uint32_t</span> <span class="tok-op">*</span>)(<span class="tok-reg">UART_BASE</span> <span class="tok-op">+</span> <span class="tok-num">0x04U</span>))  <span class="tok-com">/* Data Register        */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_BRR</span>  (<span class="tok-op">*</span>(<span class="tok-kw">volatile</span> <span class="tok-type">uint32_t</span> <span class="tok-op">*</span>)(<span class="tok-reg">UART_BASE</span> <span class="tok-op">+</span> <span class="tok-num">0x08U</span>))  <span class="tok-com">/* Baud Rate Register   */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_CR1</span>  (<span class="tok-op">*</span>(<span class="tok-kw">volatile</span> <span class="tok-type">uint32_t</span> <span class="tok-op">*</span>)(<span class="tok-reg">UART_BASE</span> <span class="tok-op">+</span> <span class="tok-num">0x0CU</span>))  <span class="tok-com">/* Control Register 1   */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_CR2</span>  (<span class="tok-op">*</span>(<span class="tok-kw">volatile</span> <span class="tok-type">uint32_t</span> <span class="tok-op">*</span>)(<span class="tok-reg">UART_BASE</span> <span class="tok-op">+</span> <span class="tok-num">0x10U</span>))  <span class="tok-com">/* Control Register 2   */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_CR3</span>  (<span class="tok-op">*</span>(<span class="tok-kw">volatile</span> <span class="tok-type">uint32_t</span> <span class="tok-op">+</span> <span class="tok-num">0x14U</span>))  <span class="tok-com">/* Control Register 3   */</span>
+
+<span class="tok-com">/* --- CR1 bit positions ------------------------------------------ */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_CR1_RE</span>     (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span>  <span class="tok-num">2</span>)  <span class="tok-com">/* Receiver Enable                      */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_CR1_TE</span>     (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span>  <span class="tok-num">3</span>)  <span class="tok-com">/* Transmitter Enable                   */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_CR1_RXNEIE</span> (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span>  <span class="tok-num">5</span>)  <span class="tok-com">/* RXNE Interrupt Enable                */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_CR1_TCIE</span>   (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span>  <span class="tok-num">6</span>)  <span class="tok-com">/* Transmission Complete Interrupt      */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_CR1_TXEIE</span>  (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span>  <span class="tok-num">7</span>)  <span class="tok-com">/* TXE Interrupt Enable                 */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_CR1_PS</span>     (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span>  <span class="tok-num">9</span>)  <span class="tok-com">/* Parity Selection: 0=Even, 1=Odd      */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_CR1_PCE</span>    (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">10</span>)  <span class="tok-com">/* Parity Control Enable                */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_CR1_M</span>      (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">12</span>)  <span class="tok-com">/* Word length: 0=8-bit frame, 1=9-bit  */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_CR1_UE</span>     (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">13</span>)  <span class="tok-com">/* USART Enable — set LAST              */</span>
+
+<span class="tok-com">/* --- CR2 stop-bit field (bits [13:12]) -------------------------- */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_CR2_STOP_1</span> (<span class="tok-num">0U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">12</span>)  <span class="tok-com">/* 1 stop bit  — standard               */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_CR2_STOP_2</span> (<span class="tok-num">2U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">12</span>)  <span class="tok-com">/* 2 stop bits — slow or noisy links    */</span>
+
+<span class="tok-com">/* --- SR status flags -------------------------------------------- */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_SR_PE</span>    (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">0</span>)  <span class="tok-com">/* Parity Error   — wrong parity bit    */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_SR_FE</span>    (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">1</span>)  <span class="tok-com">/* Framing Error  — no valid stop bit   */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_SR_NE</span>    (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">2</span>)  <span class="tok-com">/* Noise Error    — majority vote fail  */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_SR_ORE</span>   (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">3</span>)  <span class="tok-com">/* Overrun Error  — DR not read in time */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_SR_RXNE</span>  (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">5</span>)  <span class="tok-com">/* RX Not Empty   — byte ready in DR    */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_SR_TC</span>    (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">6</span>)  <span class="tok-com">/* Transmission Complete — shift empty  */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_SR_TXE</span>   (<span class="tok-num">1U</span> <span class="tok-op">&lt;&lt;</span> <span class="tok-num">7</span>)  <span class="tok-com">/* TX Empty       — DR free for next    */</span>
+
+<span class="tok-com">/* Convenience mask: any error flag set */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_SR_ERR</span>   (<span class="tok-reg">UART_SR_PE</span> <span class="tok-op">|</span> <span class="tok-reg">UART_SR_FE</span> <span class="tok-op">|</span> <span class="tok-reg">UART_SR_NE</span> <span class="tok-op">|</span> <span class="tok-reg">UART_SR_ORE</span>)</code></pre>
+</div>
+
+<h2>Baud rate — <span class="em">the BRR calculation</span></h2>
+
+<p>BRR is the one register that trips up almost every first-time UART bringup. The formula is deceptively simple: divide the peripheral clock by the desired baud rate. The subtlety is rounding — integer truncation introduces a systematic error that grows at high baud rates relative to slow peripheral clocks. Adding half the denominator before dividing rounds to the nearest integer instead, cutting the maximum error roughly in half.</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">uart_driver.h — baud rate macro with rounding</span></div>
+<pre><code><span class="tok-com">/* UART_BRR_CALC — compute BRR register value for 16× oversampling.
+ *
+ * Formula: BRR = fPCLK / baud
+ * Rounding: adding (baud/2) before dividing rounds to nearest integer,
+ *           reducing the baud-rate error compared to plain truncation.
+ *
+ * Example calculations:
+ *   9600 baud  @ 16 MHz : BRR = (16000000 + 4800)   / 9600   = 1667  (0x0683)
+ *   115200 baud@ 16 MHz : BRR = (16000000 + 57600)  / 115200 = 139   (0x008B)
+ *   9600 baud  @ 72 MHz : BRR = (72000000 + 4800)   / 9600   = 7501  (0x1D4D)
+ *   115200 baud@ 72 MHz : BRR = (72000000 + 57600)  / 115200 = 626   (0x0272)
+ *   115200 baud@ 48 MHz : BRR = (48000000 + 57600)  / 115200 = 417   (0x01A1)
+ *
+ * Actual baud error after rounding is typically &lt; 0.5% — within the
+ * ±2% tolerance most UART receivers require for reliable operation.    */</span>
+<span class="tok-pp">#define</span> <span class="tok-fn">UART_BRR_CALC</span>(fclk, baud)  (((fclk) <span class="tok-op">+</span> ((baud) <span class="tok-op">/</span> <span class="tok-num">2U</span>)) <span class="tok-op">/</span> (baud))</code></pre>
+</div>
+
+<div class="table-wrap">
+<table class="prose-table">
+<thead>
+<tr><th>Baud Rate</th><th>fPCLK</th><th>BRR (decimal)</th><th>BRR (hex)</th><th>Actual baud</th><th>Error</th></tr>
+</thead>
+<tbody>
+<tr><td>9 600</td><td>16 MHz</td><td>1 667</td><td>0x0683</td><td>9 598</td><td>−0.02%</td></tr>
+<tr><td>115 200</td><td>16 MHz</td><td>139</td><td>0x008B</td><td>115 108</td><td>−0.08%</td></tr>
+<tr><td>9 600</td><td>72 MHz</td><td>7 500</td><td>0x1D4C</td><td>9 600</td><td>0.00%</td></tr>
+<tr><td>115 200</td><td>72 MHz</td><td>625</td><td>0x0271</td><td>115 200</td><td>0.00%</td></tr>
+<tr><td>115 200</td><td>48 MHz</td><td>417</td><td>0x01A1</td><td>115 108</td><td>−0.08%</td></tr>
+<tr><td>230 400</td><td>48 MHz</td><td>208</td><td>0x00D0</td><td>230 769</td><td>+0.16%</td></tr>
+<tr><td>1 000 000</td><td>48 MHz</td><td>48</td><td>0x0030</td><td>1 000 000</td><td>0.00%</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout warn">
+<div class="callout-label">Common Mistake</div>
+<p>Using the wrong clock source. USART peripherals on many MCUs can be clocked from either APB1 or APB2 (or a dedicated USART clock domain on newer parts), and those buses often run at different frequencies. If your BRR calculation uses 72 MHz but the USART peripheral is on APB1 running at 36 MHz, the actual baud rate will be half what you expect — and every frame will be a framing error on the other end. Always confirm the peripheral clock source from the RCC configuration before computing BRR.</p>
+</div>
+
+<h2>UART <span class="em">initialisation</span></h2>
+
+<p>Initialisation order matters. CR1 must be written while the peripheral is disabled (UE=0), because changing word length or parity while the peripheral is active produces unpredictable frame corruption. The BRR register also must be set before UE is asserted. The correct sequence is: clear everything, set BRR, set CR2 for stop bits, set CR1 with TE and RE, then set UE last.</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">uart_driver.c — UART_Init</span></div>
+<pre><code><span class="tok-pp">#include</span> <span class="tok-str">"uart_driver.h"</span>
+
+<span class="tok-com">/* UART_Init — configure for 8N1 at the requested baud rate.
+ * fclk: peripheral clock in Hz (confirm APB1 vs APB2 for your MCU)
+ * baud: desired baud rate (e.g. 9600, 115200, 1000000)
+ *
+ * Prerequisites — before calling:
+ *   1. Enable the UART peripheral clock via RCC (MCU-specific)
+ *   2. Configure TX pin as push-pull AF output
+ *   3. Configure RX pin as input (floating or pull-up)             */</span>
+<span class="tok-kw">void</span> <span class="tok-fn">UART_Init</span>(<span class="tok-type">uint32_t</span> fclk, <span class="tok-type">uint32_t</span> baud)
+{
+    <span class="tok-com">/* Step 1: Disable peripheral — required before changing CR1 fields.
+     * Writing to M, PCE, PS while UE=1 produces undefined behaviour.  */</span>
+    <span class="tok-reg">UART_CR1</span> <span class="tok-op">=</span> <span class="tok-num">0</span>;
+    <span class="tok-reg">UART_CR2</span> <span class="tok-op">=</span> <span class="tok-num">0</span>;
+    <span class="tok-reg">UART_CR3</span> <span class="tok-op">=</span> <span class="tok-num">0</span>;
+
+    <span class="tok-com">/* Step 2: Set baud rate divider.
+     * BRR = fclk / baud (with rounding). For 16× oversampling the
+     * hardware samples each bit at positions 7, 8, 9 of the 16 sub-clocks
+     * and takes the majority. BRR written before UE is asserted.       */</span>
+    <span class="tok-reg">UART_BRR</span> <span class="tok-op">=</span> <span class="tok-fn">UART_BRR_CALC</span>(fclk, baud);
+
+    <span class="tok-com">/* Step 3: 1 stop bit — the 8N1 default.
+     * 2 stop bits (UART_CR2_STOP_2) are used for RS-232 links or when
+     * the receiver needs extra time to process bytes (slow UART-to-USB). */</span>
+    <span class="tok-reg">UART_CR2</span> <span class="tok-op">=</span> <span class="tok-reg">UART_CR2_STOP_1</span>;
+
+    <span class="tok-com">/* Step 4: Enable TX and RX, then enable the peripheral last.
+     * Setting TE causes an idle frame (all 1s) to be sent first — this
+     * initialises the TX shift register and brings the line to a known
+     * idle-high state before any real data goes out.
+     * CR1.M=0 (8-bit), CR1.PCE=0 (no parity) remain cleared = 8N1.   */</span>
+    <span class="tok-reg">UART_CR1</span> <span class="tok-op">=</span> <span class="tok-reg">UART_CR1_TE</span>            <span class="tok-com">/* enable transmitter */</span>
+             <span class="tok-op">|</span> <span class="tok-reg">UART_CR1_RE</span>            <span class="tok-com">/* enable receiver    */</span>
+             <span class="tok-op">|</span> <span class="tok-reg">UART_CR1_UE</span>;           <span class="tok-com">/* enable peripheral  */</span>
+}</code></pre>
+</div>
+
+<h2>Polling transmit <span class="em">and receive</span></h2>
+
+<p>The polling model is the right starting point: no interrupts, no buffers, just wait-and-write. It works reliably for debug output and simple command-response protocols where you control both ends. Two flags govern polling: <em>TXE</em> tells you the data register is empty and safe to load the next byte; <em>RXNE</em> tells you the shift register has assembled a complete frame and copied it into the data register, ready to read.</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">uart_driver.c — polling transmit and receive</span></div>
+<pre><code><span class="tok-com">/* UART_SendByte — blocking polled transmit.
+ *
+ * TXE=1 means DR has been copied to the shift register.
+ * The shift register is now clocking the previous byte out on the wire
+ * while DR is free to accept the next one — hardware double-buffering.
+ *
+ * IMPORTANT: do NOT wait for TC (Transmission Complete) here.
+ * TC goes high only after the LAST stop bit leaves the wire. Waiting for
+ * TC between every byte would idle the transmitter for a full bit-period
+ * between bytes, halving your effective throughput. Use TC only when you
+ * need to know the wire is truly quiet (e.g. RS-485 direction change).  */</span>
+<span class="tok-kw">void</span> <span class="tok-fn">UART_SendByte</span>(<span class="tok-type">uint8_t</span> b)
+{
+    <span class="tok-kw">while</span> (<span class="tok-op">!</span>(<span class="tok-reg">UART_SR</span> <span class="tok-op">&amp;</span> <span class="tok-reg">UART_SR_TXE</span>));   <span class="tok-com">/* wait: DR empty, safe to load  */</span>
+    <span class="tok-reg">UART_DR</span> <span class="tok-op">=</span> (<span class="tok-type">uint32_t</span>)b;               <span class="tok-com">/* write starts the frame        */</span>
+}
+
+<span class="tok-com">/* UART_ReadByte — blocking polled receive.
+ *
+ * RXNE=1 means the shift register has assembled a complete 8-bit frame
+ * (start bit consumed, stop bit verified) and moved it to DR.
+ * Reading DR clears RXNE automatically.
+ *
+ * This is the simplest possible RX path. In production, always check
+ * UART_SR_ERR before reading DR — see the error handling section.      */</span>
+<span class="tok-type">uint8_t</span> <span class="tok-fn">UART_ReadByte</span>(<span class="tok-kw">void</span>)
+{
+    <span class="tok-kw">while</span> (<span class="tok-op">!</span>(<span class="tok-reg">UART_SR</span> <span class="tok-op">&amp;</span> <span class="tok-reg">UART_SR_RXNE</span>));  <span class="tok-com">/* wait: byte assembled in DR    */</span>
+    <span class="tok-kw">return</span> (<span class="tok-type">uint8_t</span>)<span class="tok-reg">UART_DR</span>;             <span class="tok-com">/* read clears RXNE              */</span>
+}
+
+<span class="tok-com">/* UART_SendString — transmit null-terminated string */</span>
+<span class="tok-kw">void</span> <span class="tok-fn">UART_SendString</span>(<span class="tok-kw">const</span> <span class="tok-type">char</span> <span class="tok-op">*</span>s)
+{
+    <span class="tok-kw">while</span> (<span class="tok-op">*</span>s) <span class="tok-fn">UART_SendByte</span>((<span class="tok-type">uint8_t</span>)<span class="tok-op">*</span>s<span class="tok-op">++</span>);
+}
+
+<span class="tok-com">/* UART_SendBuffer — transmit raw bytes of known length */</span>
+<span class="tok-kw">void</span> <span class="tok-fn">UART_SendBuffer</span>(<span class="tok-kw">const</span> <span class="tok-type">uint8_t</span> <span class="tok-op">*</span>buf, <span class="tok-type">uint32_t</span> len)
+{
+    <span class="tok-kw">while</span> (len<span class="tok-op">--</span>) <span class="tok-fn">UART_SendByte</span>(<span class="tok-op">*</span>buf<span class="tok-op">++</span>);
+}</code></pre>
+</div>
+
+<div class="callout key">
+<div class="callout-label">TXE vs TC — interview classic</div>
+<p><strong>TXE</strong> (TX Empty) means the data register has been transferred to the shift register — DR is ready for the next byte, but the current byte is still being clocked out on the wire. <strong>TC</strong> (Transmission Complete) means the shift register is empty and the stop bit of the last frame has left the wire. For continuous streaming use TXE; for RS-485 where you must switch the transceiver direction after the last bit, wait for TC. Confusing the two is one of the top UART interview mistakes.</p>
+</div>
+
+<h2>Interrupt-driven <span class="em">RX with ring buffer</span></h2>
+
+<p>Polling RXNE is fine when your main loop runs faster than one byte-period. At 115200 baud, a byte arrives every 87 µs. If any part of your main loop takes longer than that — an I2C transaction, an ADC conversion, a flash write — you miss the byte and the hardware flags an overrun error. An RX interrupt fires the instant RXNE goes high, stashes the byte in a ring buffer in microseconds, and lets the main loop drain the buffer at leisure.</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">uart_driver.c — interrupt-driven RX with circular buffer</span></div>
+<pre><code><span class="tok-com">/* Ring buffer — power-of-2 size lets us use a bitmask instead of modulo.
+ * Modulo (%) is slow on MCUs without a hardware divider (e.g. Cortex-M0). */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">RX_BUF_SIZE</span>  <span class="tok-num">64</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">RX_BUF_MASK</span>  (<span class="tok-reg">RX_BUF_SIZE</span> <span class="tok-op">-</span> <span class="tok-num">1</span>)   <span class="tok-com">/* works iff RX_BUF_SIZE is 2^N */</span>
+
+<span class="tok-kw">static</span> <span class="tok-kw">volatile</span> <span class="tok-type">uint8_t</span>  rx_buf[<span class="tok-reg">RX_BUF_SIZE</span>];
+<span class="tok-kw">static</span> <span class="tok-kw">volatile</span> <span class="tok-type">uint32_t</span> rx_head <span class="tok-op">=</span> <span class="tok-num">0</span>;   <span class="tok-com">/* ISR writes here (producer)  */</span>
+<span class="tok-kw">static</span> <span class="tok-kw">volatile</span> <span class="tok-type">uint32_t</span> rx_tail <span class="tok-op">=</span> <span class="tok-num">0</span>;   <span class="tok-com">/* main loop reads here (consumer) */</span>
+
+<span class="tok-com">/* UART_EnableRxInterrupt — arm the RXNEIE bit so the CPU is woken on
+ * every received byte. Also enable the NVIC IRQ for your UART instance
+ * (NVIC_EnableIRQ(USART1_IRQn) — MCU-specific).                      */</span>
+<span class="tok-kw">void</span> <span class="tok-fn">UART_EnableRxInterrupt</span>(<span class="tok-kw">void</span>)
+{
+    <span class="tok-reg">UART_CR1</span> <span class="tok-op">|=</span> <span class="tok-reg">UART_CR1_RXNEIE</span>;       <span class="tok-com">/* RXNE fires the IRQ            */</span>
+}
+
+<span class="tok-com">/* ISR — rename to match your MCU's UART interrupt vector symbol.
+ *
+ * Design rules for UART ISRs:
+ *   1. Read SR first, then DR — this is the mandatory clear sequence.
+ *   2. Keep it short: store the byte and exit. No processing in the ISR.
+ *   3. If the buffer is full, drop the byte rather than blocking.
+ *   4. volatile on rx_head/rx_tail prevents the compiler from caching
+ *      them in registers across ISR boundaries.                        */</span>
+<span class="tok-kw">void</span> <span class="tok-fn">UART_IRQHandler</span>(<span class="tok-kw">void</span>)
+{
+    <span class="tok-type">uint32_t</span> sr <span class="tok-op">=</span> <span class="tok-reg">UART_SR</span>;              <span class="tok-com">/* snapshot SR once              */</span>
+
+    <span class="tok-kw">if</span> (sr <span class="tok-op">&amp;</span> <span class="tok-reg">UART_SR_ERR</span>) {
+        (<span class="tok-kw">void</span>)<span class="tok-reg">UART_DR</span>;                  <span class="tok-com">/* read DR clears FE/ORE/NE     */</span>
+        <span class="tok-kw">return</span>;
+    }
+
+    <span class="tok-kw">if</span> (sr <span class="tok-op">&amp;</span> <span class="tok-reg">UART_SR_RXNE</span>) {
+        <span class="tok-type">uint8_t</span> b <span class="tok-op">=</span> (<span class="tok-type">uint8_t</span>)<span class="tok-reg">UART_DR</span>;    <span class="tok-com">/* reading DR clears RXNE       */</span>
+        <span class="tok-type">uint32_t</span> next <span class="tok-op">=</span> (rx_head <span class="tok-op">+</span> <span class="tok-num">1</span>) <span class="tok-op">&amp;</span> <span class="tok-reg">RX_BUF_MASK</span>;
+        <span class="tok-kw">if</span> (next <span class="tok-op">!=</span> rx_tail) {          <span class="tok-com">/* buffer not full — store byte */</span>
+            rx_buf[rx_head] <span class="tok-op">=</span> b;
+            rx_head <span class="tok-op">=</span> next;
+        }
+        <span class="tok-com">/* if next == rx_tail: buffer full, byte silently dropped        */</span>
+    }
+}
+
+<span class="tok-com">/* UART_ReadBuffered — main-loop consumer (non-blocking).
+ * Returns 1 and writes *out if a byte is available, 0 if empty.
+ * Safe to call from main loop without disabling interrupts because
+ * rx_tail is only modified here and rx_head is only modified in the ISR. */</span>
+<span class="tok-type">int</span> <span class="tok-fn">UART_ReadBuffered</span>(<span class="tok-type">uint8_t</span> <span class="tok-op">*</span>out)
+{
+    <span class="tok-kw">if</span> (rx_tail <span class="tok-op">==</span> rx_head) <span class="tok-kw">return</span> <span class="tok-num">0</span>; <span class="tok-com">/* empty                         */</span>
+    <span class="tok-op">*</span>out <span class="tok-op">=</span> rx_buf[rx_tail];
+    rx_tail <span class="tok-op">=</span> (rx_tail <span class="tok-op">+</span> <span class="tok-num">1</span>) <span class="tok-op">&amp;</span> <span class="tok-reg">RX_BUF_MASK</span>;
+    <span class="tok-kw">return</span> <span class="tok-num">1</span>;
+}</code></pre>
+</div>
+
+<h2>Error handling — <span class="em">FE, ORE, NE</span></h2>
+
+<p>The UART status register contains four error flags that latch independently. They are sticky — once set, they remain set until explicitly cleared. The clear sequence on most MCUs is: read SR, then read DR. Reading DR without first reading SR does not clear the flags. Skipping error handling means stale error flags eventually corrupt valid reads.</p>
+
+<div class="diagram">  Error flag summary — SR bits [3:0]
+
+  Bit  Flag  Name             Cause                         Recovery
+  ──────────────────────────────────────────────────────────────────
+  [0]  PE    Parity Error     Received parity bit doesn't   Read SR, read DR
+             match computed parity over data bits.          Check baud + parity config
+
+  [1]  FE    Framing Error    No valid stop bit detected     Read SR, read DR
+             at expected position after data bits.          → Wrong baud rate?
+                                                            → Sender uses 2 stop bits?
+
+  [2]  NE    Noise Error      3-sample majority vote         Read SR, read DR
+             was not unanimous (2-of-3 won, not 3-of-3).   Byte may still be valid.
+             Indicates marginal signal quality.             Check PCB trace length.
+
+  [3]  ORE   Overrun Error    New byte completed shifting    Read SR, read DR
+             before DR was read — old byte is LOST,         PREVIOUS byte is gone.
+             DR now holds the NEW (overrunning) byte.       Use interrupt-driven RX.</div>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">uart_driver.c — UART_ReadWithErrorCheck</span></div>
+<pre><code><span class="tok-com">/* Error return codes */</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_OK</span>           <span class="tok-num">0</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_ERR_OVERRUN</span>  <span class="tok-num">1</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_ERR_FRAMING</span>  <span class="tok-num">2</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_ERR_NOISE</span>    <span class="tok-num">3</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_ERR_PARITY</span>   <span class="tok-num">4</span>
+<span class="tok-pp">#define</span> <span class="tok-reg">UART_ERR_NODATA</span>   <span class="tok-num">5</span>
+
+<span class="tok-com">/* UART_ReadWithErrorCheck — non-blocking receive with full error handling.
+ *
+ * Clear sequence (mandatory on most MCUs):
+ *   1. Read SR  — snapshots all flags
+ *   2. Read DR  — clears RXNE and the sticky error flags simultaneously
+ *
+ * Skipping step 1 and going straight to DR leaves FE/ORE/NE latched,
+ * so they will incorrectly flag the NEXT valid read.                  */</span>
+<span class="tok-type">int</span> <span class="tok-fn">UART_ReadWithErrorCheck</span>(<span class="tok-type">uint8_t</span> <span class="tok-op">*</span>out)
+{
+    <span class="tok-type">uint32_t</span> sr <span class="tok-op">=</span> <span class="tok-reg">UART_SR</span>;              <span class="tok-com">/* Step 1: read SR first         */</span>
+
+    <span class="tok-kw">if</span> (sr <span class="tok-op">&amp;</span> <span class="tok-reg">UART_SR_ORE</span>) {
+        <span class="tok-com">/* Overrun: the old byte was lost. DR holds the NEW byte.
+         * Recovering: read DR to clear ORE, then decide whether
+         * to keep the new byte or report the error and discard.       */</span>
+        (<span class="tok-kw">void</span>)<span class="tok-reg">UART_DR</span>;                  <span class="tok-com">/* Step 2: clear the flag        */</span>
+        <span class="tok-kw">return</span> <span class="tok-reg">UART_ERR_OVERRUN</span>;
+    }
+    <span class="tok-kw">if</span> (sr <span class="tok-op">&amp;</span> <span class="tok-reg">UART_SR_FE</span>) {
+        <span class="tok-com">/* Framing error: no stop bit where expected.
+         * Most common cause: baud rate mismatch between the two ends.
+         * Also triggered by a BREAK condition (sender holds line low). */</span>
+        (<span class="tok-kw">void</span>)<span class="tok-reg">UART_DR</span>;
+        <span class="tok-kw">return</span> <span class="tok-reg">UART_ERR_FRAMING</span>;
+    }
+    <span class="tok-kw">if</span> (sr <span class="tok-op">&amp;</span> <span class="tok-reg">UART_SR_NE</span>) {
+        <span class="tok-com">/* Noise error: the 3-sample majority vote was 2-1 rather than 3-0.
+         * The byte in DR may still be correct — NE indicates degraded
+         * signal quality, not necessarily a wrong bit. Log it and decide
+         * at the application level whether to keep or discard.        */</span>
+        (<span class="tok-kw">void</span>)<span class="tok-reg">UART_DR</span>;
+        <span class="tok-kw">return</span> <span class="tok-reg">UART_ERR_NOISE</span>;
+    }
+    <span class="tok-kw">if</span> (sr <span class="tok-op">&amp;</span> <span class="tok-reg">UART_SR_PE</span>) {
+        (<span class="tok-kw">void</span>)<span class="tok-reg">UART_DR</span>;
+        <span class="tok-kw">return</span> <span class="tok-reg">UART_ERR_PARITY</span>;
+    }
+    <span class="tok-kw">if</span> (sr <span class="tok-op">&amp;</span> <span class="tok-reg">UART_SR_RXNE</span>) {
+        <span class="tok-op">*</span>out <span class="tok-op">=</span> (<span class="tok-type">uint8_t</span>)<span class="tok-reg">UART_DR</span>;          <span class="tok-com">/* Step 2: read clears RXNE     */</span>
+        <span class="tok-kw">return</span> <span class="tok-reg">UART_OK</span>;
+    }
+    <span class="tok-kw">return</span> <span class="tok-reg">UART_ERR_NODATA</span>;              <span class="tok-com">/* RXNE not set — nothing ready  */</span>
+}</code></pre>
+</div>
+
+<div class="callout warn">
+<div class="callout-label">Overrun Recovery — Critical Detail</div>
+<p>When ORE is set, the byte that caused the overrun is in DR — the byte you failed to read in time is gone forever. Reading DR clears ORE. On some MCU families (STM32L, STM32H, STM32G series) the error flags are cleared via a dedicated ICR (Interrupt Clear Register) register write rather than the SR→DR read sequence. Always check your reference manual's "Error flag clearing procedure" section — using the wrong sequence leaves flags latched and corrupts subsequent reads.</p>
+</div>
+
+<h3>RS-485 half-duplex direction control</h3>
+
+<p>Standard UART is full-duplex: TX and RX on separate wires. RS-485 is a differential, half-duplex variant where a single twisted pair carries both directions, arbitrated by a direction-enable (DE) pin on the transceiver IC. Before transmitting, the MCU must assert DE to switch the transceiver to driver mode. After the last bit has left the wire — TC=1, not TXE=1 — the MCU de-asserts DE to return to receive mode. Many MCUs have a hardware DE output option that automates this; without it, the sequence must be managed manually in software.</p>
+
+<div class="codeblock">
+<div class="codeblock-head"><span class="lang">C</span><span class="file">rs485.c — manual DE pin control for RS-485 half-duplex</span></div>
+<pre><code><span class="tok-com">/* Assumes DE pin is a GPIO output. Assert before first byte,
+ * wait for TC after last byte, then de-assert.
+ * Using TXE instead of TC here would release DE while the last
+ * stop bit is still being clocked out — corrupting the frame.  */</span>
+<span class="tok-kw">void</span> <span class="tok-fn">RS485_SendBuffer</span>(<span class="tok-kw">const</span> <span class="tok-type">uint8_t</span> <span class="tok-op">*</span>buf, <span class="tok-type">uint32_t</span> len)
+{
+    <span class="tok-fn">DE_Assert</span>();                           <span class="tok-com">/* switch to driver mode        */</span>
+
+    <span class="tok-kw">for</span> (<span class="tok-type">uint32_t</span> i <span class="tok-op">=</span> <span class="tok-num">0</span>; i <span class="tok-op">&lt;</span> len; i<span class="tok-op">++</span>) {
+        <span class="tok-kw">while</span> (<span class="tok-op">!</span>(<span class="tok-reg">UART_SR</span> <span class="tok-op">&amp;</span> <span class="tok-reg">UART_SR_TXE</span>));  <span class="tok-com">/* wait for DR free             */</span>
+        <span class="tok-reg">UART_DR</span> <span class="tok-op">=</span> buf[i];
+    }
+
+    <span class="tok-com">/* Wait for TC=1: shift register has sent the last stop bit.
+     * Only now is it safe to tri-state the driver.             */</span>
+    <span class="tok-kw">while</span> (<span class="tok-op">!</span>(<span class="tok-reg">UART_SR</span> <span class="tok-op">&amp;</span> <span class="tok-reg">UART_SR_TC</span>));
+
+    <span class="tok-fn">DE_Deassert</span>();                         <span class="tok-com">/* return to receive mode       */</span>
+}</code></pre>
+</div>
+
+  </div><!-- /prose -->
+
+  <div class="qa-section">
+  <div class="qa-section-head">
+    <div class="label">Interview Questions</div>
+    <h2>Interview Q &amp; A — <span class="em">UART</span></h2>
+  </div>
+
+  <div class="qa">
+    <div class="qa-q">
+      <span class="qa-num">Q1.</span>
+      <span class="qa-question">How does a UART receiver synchronise to incoming data without a clock signal?</span>
+    </div>
+    <div class="qa-answer">
+      <p>The receiver locks onto the falling edge of the start bit — the line transitioning from idle-high to logic zero. From that moment it starts counting sub-clock intervals using its internal clock, which runs at 16× (or 8×) the agreed baud rate. Each bit period is divided into 16 sub-clocks; the receiver samples the line at sub-clocks 7, 8, and 9 and takes a 2-of-3 majority vote. This three-sample strategy means a single glitch that hits exactly one sample does not corrupt the bit decision.</p>
+      <p>The consequence is that both sides must agree on baud rate to within roughly ±2–3%. Beyond that threshold, the accumulated timing drift moves the sample window outside the data eye and errors multiply rapidly. There is no correction mechanism — if the clocks diverge, communication fails silently (framing errors) until you reconfigure one side.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-q">
+      <span class="qa-num">Q2.</span>
+      <span class="qa-question">What is the difference between the TXE and TC flags? Which do you use for continuous streaming, and which for RS-485?</span>
+    </div>
+    <div class="qa-answer">
+      <p><strong>TXE</strong> (Transmit Data Register Empty) goes high when the CPU-writable data register has been transferred to the hardware shift register. The shift register is now clocking out the current byte while DR is ready for the next one — this is the hardware's double-buffering mechanism. TXE goes high before the current byte has finished transmitting.</p>
+      <p><strong>TC</strong> (Transmission Complete) goes high only after the shift register has clocked out the last bit of the last stop bit. The wire is truly idle.</p>
+      <p>For continuous byte streaming, wait on TXE — it keeps the shift register fed without gaps. For RS-485 direction switching, you must wait on TC before de-asserting the driver-enable pin, because the last stop bit is still on the wire when TXE goes high. Using TXE for RS-485 direction control truncates the last stop bit and produces a framing error at the far end.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-q">
+      <span class="qa-num">Q3.</span>
+      <span class="qa-question">Explain the overrun error (ORE). What is lost, what is in DR after ORE is set, and how do you recover?</span>
+    </div>
+    <div class="qa-answer">
+      <p>ORE fires when the shift register completes assembly of a new byte while DR still holds the previous byte — the CPU did not read DR fast enough. The previous byte is permanently lost; it was overwritten when the shift register transferred the new byte to DR. DR now holds the <em>new</em> (overrunning) byte.</p>
+      <p>Recovery on most MCUs requires reading SR first, then reading DR. The SR→DR sequence clears the ORE flag. If you only read DR without reading SR, ORE remains set and will corrupt the next valid read check. On STM32L/H/G series, ORE is instead cleared by writing to a dedicated ICR (Interrupt Clear Register) — always verify the clearing procedure in your reference manual.</p>
+      <p>Prevention is better than recovery: use interrupt-driven RX with a ring buffer so that every byte is read from DR within microseconds of RXNE firing, long before the next frame can arrive even at 1 Mbit/s.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-q">
+      <span class="qa-num">Q4.</span>
+      <span class="qa-question">How do you calculate the BRR register value, and what goes wrong if you don't round the result?</span>
+    </div>
+    <div class="qa-answer">
+      <p>For 16× oversampling: <code>BRR = fPCLK / baud</code>. Since both operands are integers, plain division truncates. The truncation error is at most one ULP (one BRR unit), which corresponds to a baud rate error of up to <code>baud / fPCLK × 100%</code>. At 115200 baud on a 16 MHz clock, BRR = 138.8 — truncating gives 138, which yields an actual baud rate of 115 942 — 0.64% fast, above the ±0.5% recommendation for robust links.</p>
+      <p>The fix is to round: <code>BRR = (fPCLK + baud/2) / baud</code>. Adding half the denominator before dividing rounds to the nearest integer, cutting the maximum error to ±0.5 ULP. At 115200 / 16 MHz this gives 139, for an actual rate of 115 108 — only 0.08% slow, well within tolerance. Always use the rounding form in production code.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-q">
+      <span class="qa-num">Q5.</span>
+      <span class="qa-question">Why is interrupt-driven RX safer than polling for most real-world applications?</span>
+    </div>
+    <div class="qa-answer">
+      <p>Polling requires the CPU to visit the RXNE flag check faster than one byte-period to avoid overrun. At 115200 baud that window is 87 µs. Any single operation longer than that — a blocking I2C transaction, a flash erase, a long ISR for another peripheral — misses the byte. In a system with multiple peripherals and an RTOS, guaranteeing a 87 µs polling interval everywhere is impractical.</p>
+      <p>Interrupt-driven RX decouples byte arrival from CPU availability. The ISR fires within a few instruction cycles of RXNE going high, stores the byte in a ring buffer in O(1) time, and exits. The main loop drains the buffer whenever it gets scheduled. The only failure mode is a buffer overflow if the main loop falls behind for longer than the buffer can absorb — which is easily calculated: a 64-byte buffer at 115200 baud buys 5.5 ms of slack, which is sufficient for all but the most extreme real-time tasks.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-q">
+      <span class="qa-num">Q6.</span>
+      <span class="qa-question">What does the noise error (NE) flag mean, and is the byte in DR still usable when NE is set?</span>
+    </div>
+    <div class="qa-answer">
+      <p>NE indicates that during the three-sample majority vote on one or more bits, the vote was 2-1 rather than 3-0. The hardware still accepted the 2-vote result as the bit value — the byte was not rejected — but the disagreement among samples is a warning that the signal quality is marginal.</p>
+      <p>Unlike a framing or overrun error, NE does not necessarily mean the byte is wrong. If a single glitch hit exactly one of the three samples, the majority vote still got the right answer. Whether to use or discard the byte depends on the application: for a debug console you might log the NE and keep the byte; for a safety-critical command channel you would discard it and request a retransmit. NE recurring frequently on a link is diagnostic: it points to impedance mismatch, excessive trace length, or ground potential difference between sender and receiver — all PCB-level problems, not software ones.</p>
+    </div>
+  </div>
+
+  </div><!-- /qa-section -->
+
+</article>
+
+<nav class="topic-nav">
+  <a href="HB6.html" class="nav-prev">
+    <span class="nav-label">Back to</span>
+    <span class="nav-title">HB6 — Serial &amp; Field-Bus Protocols</span>
+  </a>
+  <a href="HB6-T02.html" class="nav-next">
+    <span class="nav-label">Next · Topic 02</span>
+    <span class="nav-title">SPI — Modes, Multi-Slave, QSPI / OSPI</span>
+  </a>
+</nav>
+
+<footer class="footer">
+  <span>HB6 · Topic 01 · Advanced</span>
+  <span class="footer-mark">§</span>
+  <span class="right"><a href="index.html">Series Index</a></span>
+</footer>
+
+</div>
+</body>
+</html>

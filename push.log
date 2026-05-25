@@ -5,3 +5,5 @@
 [2026-05-25 10:36:11] Trigger detected. Committing: Update: HB6-T02 SPI — replace STM32/HAL code blocks with generic bare-metal implementation
 [2026-05-25 10:36:14] SUCCESS - pushed to GitHub
 [2026-05-25 10:48:25] Trigger detected. Committing: Add: HB6-T04.html UART — baud rate, framing, interrupts, error handling
+[2026-05-25 10:48:27] SUCCESS - pushed to GitHub
+[2026-05-25 17:52:07] Trigger detected. Committing: Fix: rename UART to HB6-T01, update HB6 index link, add GitHub Pages workflow
